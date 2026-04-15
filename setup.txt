@@ -1,0 +1,195 @@
+COMPLETE SETUP INSTRUCTIONS
+
+Step 1: Create Project Structure
+
+bash
+Create main project folder
+mkdir multi_cam_project
+cd multi_cam_project
+
+Create all subdirectories
+mkdir config utils camera detection pipeline profiling visualization results logs
+
+
+Step 2: Copy Files to Correct Locations
+
+Copy each file to its designated location:
+
+multi_cam_project/
+├── README.md                    → README.md
+├── requirements.txt             → requirements.txt
+├── main.py                      → main.py
+├── config/
+│   ├── __init__.py                 (empty file)
+│   └── config.py                → config.py
+├── utils/
+│   ├── __init__.py                 (empty file)
+│   └── logger.py                → logger.py
+├── camera/
+│   ├── __init__.py                 (empty file)
+│   └── camera_stream.py         → camera_stream.py
+├── detection/
+│   ├── __init__.py                 (empty file)
+│   └── detector.py              → detector.py
+├── pipeline/
+│   ├── __init__.py                 (empty file)
+│   └── pipeline_manager.py      → pipeline_manager.py
+├── profiling/
+│   ├── __init__.py                 (empty file)
+│   └── profiler.py              → profiler.py
+├── visualization/
+│   ├── __init__.py                 (empty file)
+│   └── visualizer.py            → visualizer.py
+├── results/                        (auto-created)
+└── logs/                           (auto-created)
+
+Step 3: Create Empty __init__.py Files
+
+bash
+On Linux/Mac:
+touch config/__init__.py
+touch utils/__init__.py
+touch camera/__init__.py
+touch detection/__init__.py
+touch pipeline/__init__.py
+touch profiling/__init__.py
+touch visualization/__init__.py
+
+On Windows (PowerShell):
+New-Item config/__init__.py
+New-Item utils/__init__.py
+New-Item camera/__init__.py
+New-Item detection/__init__.py
+New-Item pipeline/__init__.py
+New-Item profiling/__init__.py
+New-Item visualization/__init__.py
+
+Or create them manually as empty files
+
+Step 4: Install Dependencies
+
+bash
+Create virtual environment (recommended)
+python -m venv venv
+
+Activate virtual environment
+Linux/Mac:
+source venv/bin/activate
+Windows:
+venv\Scripts\activate
+
+Install dependencies
+pip install -r requirements.txt
+
+For GPU support (optional but recommended):
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+Step 5: Verify Installation
+
+bash
+Test imports
+python -c "import cv2, torch, ultralytics; print('All imports successful!')"
+
+Check GPU availability (if you installed CUDA)
+python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+
+Step 6: Run the System
+
+bash
+Quick test with webcam (30 seconds)
+python main.py --webcam --duration 30
+
+Full demo with 4 cameras (60 seconds)
+python main.py --cameras 4 --duration 60
+
+Step 7: Check Results
+
+bash
+List generated files
+ls results/
+
+# You should see:
+# - system_stats.csv
+# - fps_comparison.png
+# - cpu_usage.png
+# - memory_usage.png
+# - gpu_usage.png (if GPU available)
+# - system_overview.png
+# - summary_report.txt
+
+Read the summary
+cat results/summary_report.txt
+
+Common Commands
+
+bash
+CPU-only mode
+python main.py --cameras 4 --device cpu --duration 30
+
+Different batch sizes
+python main.py --cameras 4 --batch-size 8 --duration 30
+
+With video files
+python main.py --video-sources video1.mp4 video2.mp4 video3.mp4
+
+Continuous mode (stop with Ctrl+C)
+python main.py --cameras 4
+
+Help
+python main.py --help
+
+Troubleshooting
+
+"ModuleNotFoundError"
+bash
+Make sure you're in the right directory
+cd multi_cam_project
+pwd  # Should show: .../multi_cam_project
+
+Make sure virtual environment is activated
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+
+Reinstall dependencies
+pip install -r requirements.txt
+
+
+"CUDA out of memory"
+bash
+Use smaller batch size
+python main.py --cameras 2 --batch-size 2
+
+Or use CPU mode
+python main.py --cameras 2 --device cpu
+
+"Cannot open camera"
+bash
+Test webcam
+python -c "import cv2; print(cv2.VideoCapture(0).isOpened())"
+
+Try different camera index
+python main.py --video-sources 1  # Try 0, 1, 2, etc.
+
+File Checksums (verify you have all files)
+
+Total files needed:
+- 1 README.md
+- 1 requirements.txt
+- 1 main.py
+- 8 Python modules (in subdirectories)
+- 7 __init__.py files (empty)
+
+Total: 18 files + 2 auto-created directories (results, logs)
+
+Next Steps
+
+1. Run the system with different configurations
+2. Analyze the generated plots in results/
+3. Read summary_report.txt for performance metrics
+4. Compare CPU vs GPU performance
+5. Write your course report based on the results!
+
+Support
+
+- Check README.md for full documentation
+- All code has detailed comments
+- Each file has docstrings explaining functionality
