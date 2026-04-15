@@ -1,0 +1,73 @@
+2026-04-13 19:20:45 - MultiCamCV - [INFO] - MainProcess - ============================================================
+2026-04-13 19:20:45 - MultiCamCV - [INFO] - MainProcess - Multi-Camera GPU-Accelerated CV System
+2026-04-13 19:20:45 - MultiCamCV - [INFO] - MainProcess - ============================================================
+2026-04-13 19:20:45 - MultiCamCV - [INFO] - MainProcess - Initializing components...
+2026-04-13 19:20:45 - MultiCamCV - [INFO] - MainProcess - Initializing profiler...
+2026-04-13 19:20:46 - MultiCamCV.Profiler - [INFO] - MainProcess - Profiler initialized - CPU: 6 cores, RAM: 7.36GB
+2026-04-13 19:20:46 - MultiCamCV.Profiler - [INFO] - MainProcess - GPU: NVIDIA GeForce GTX 1650, 4.00GB
+2026-04-13 19:20:46 - MultiCamCV - [INFO] - MainProcess - Initializing camera manager...
+2026-04-13 19:20:46 - MultiCamCV - [INFO] - MainProcess - Pre-starting camera manager before CUDA initialization...
+2026-04-13 19:20:46 - MultiCamCV.CameraManager - [INFO] - MainProcess - Starting 4 camera processes
+2026-04-13 19:20:46 - MultiCamCV.CameraManager - [INFO] - MainProcess - All camera processes started
+2026-04-13 19:20:46 - MultiCamCV - [INFO] - MainProcess - Initializing detector...
+2026-04-13 19:20:46 - MultiCamCV.YOLODetector - [INFO] - MainProcess - Using GPU: NVIDIA GeForce GTX 1650
+2026-04-13 19:20:46 - MultiCamCV.YOLODetector - [INFO] - MainProcess - GPU Memory: 4.29 GB
+2026-04-13 19:20:46 - MultiCamCV.YOLODetector - [INFO] - MainProcess - Loading model: yolov8n.pt
+2026-04-13 19:20:47 - MultiCamCV.YOLODetector - [INFO] - MainProcess - Model loaded on cuda
+2026-04-13 19:20:47 - MultiCamCV.YOLODetector - [INFO] - MainProcess - Warming up model...
+2026-04-13 19:20:58 - MultiCamCV.YOLODetector - [INFO] - MainProcess - Warmup completed in 10.317s
+2026-04-13 19:20:58 - MultiCamCV - [INFO] - MainProcess - Initializing pipeline...
+2026-04-13 19:20:58 - MultiCamCV - [INFO] - MainProcess - All components initialized
+2026-04-13 19:20:58 - MultiCamCV - [INFO] - MainProcess - Starting system...
+2026-04-13 19:20:58 - MultiCamCV.Profiler - [INFO] - MainProcess - Profiler started
+2026-04-13 19:20:58 - MultiCamCV.Pipeline - [INFO] - MainProcess - Starting pipeline manager
+2026-04-13 19:20:58 - MultiCamCV.CameraManager - [INFO] - MainProcess - Camera processes already running
+2026-04-13 19:20:58 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline started
+2026-04-13 19:20:58 - MultiCamCV - [INFO] - MainProcess - System started
+2026-04-13 19:20:58 - MultiCamCV - [INFO] - MainProcess - Press Ctrl+C to stop
+2026-04-13 19:20:58 - MultiCamCV - [INFO] - MainProcess - Running for 30s...
+2026-04-13 19:21:07 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline: 1 frames, 0.11 FPS, Queue: 49
+2026-04-13 19:21:07 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 3: 1 frames, 0.11 FPS, 526.9ms latency, 3 detections
+2026-04-13 19:21:11 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline: 225 frames, 16.95 FPS, Queue: 49
+2026-04-13 19:21:11 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 0: 62 frames, 4.67 FPS, 1216.0ms latency, 264 detections
+2026-04-13 19:21:11 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 1: 47 frames, 3.54 FPS, 316.8ms latency, 35 detections
+2026-04-13 19:21:11 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 2: 43 frames, 3.24 FPS, 346.2ms latency, 9 detections
+2026-04-13 19:21:11 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 3: 73 frames, 5.50 FPS, 1456.5ms latency, 236 detections
+2026-04-13 19:21:16 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline: 532 frames, 29.00 FPS, Queue: 50
+2026-04-13 19:21:16 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 0: 157 frames, 8.56 FPS, 896.4ms latency, 783 detections
+2026-04-13 19:21:16 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 1: 95 frames, 5.18 FPS, 205.0ms latency, 37 detections
+2026-04-13 19:21:16 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 2: 96 frames, 5.23 FPS, 206.9ms latency, 29 detections
+2026-04-13 19:21:16 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 3: 184 frames, 10.03 FPS, 1529.2ms latency, 537 detections
+2026-04-13 19:21:21 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline: 842 frames, 36.00 FPS, Queue: 50
+2026-04-13 19:21:21 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 0: 233 frames, 9.96 FPS, 639.4ms latency, 1175 detections
+2026-04-13 19:21:21 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 1: 149 frames, 6.37 FPS, 162.7ms latency, 100 detections
+2026-04-13 19:21:21 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 2: 155 frames, 6.63 FPS, 163.5ms latency, 98 detections
+2026-04-13 19:21:21 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 3: 305 frames, 13.04 FPS, 1693.5ms latency, 919 detections
+2026-04-13 19:21:26 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline: 1156 frames, 40.66 FPS, Queue: 50
+2026-04-13 19:21:26 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 0: 319 frames, 11.22 FPS, 496.5ms latency, 1552 detections
+2026-04-13 19:21:26 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 1: 198 frames, 6.96 FPS, 144.9ms latency, 143 detections
+2026-04-13 19:21:26 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 2: 210 frames, 7.39 FPS, 144.0ms latency, 105 detections
+2026-04-13 19:21:26 - MultiCamCV.Pipeline - [INFO] - MainProcess -   Camera 3: 429 frames, 15.09 FPS, 1760.7ms latency, 1219 detections
+2026-04-13 19:21:28 - MultiCamCV - [INFO] - MainProcess - Stopping system...
+2026-04-13 19:21:28 - MultiCamCV.Pipeline - [INFO] - MainProcess - Stopping pipeline
+2026-04-13 19:21:28 - MultiCamCV.CameraManager - [INFO] - MainProcess - Stopping all camera processes
+2026-04-13 19:21:33 - MultiCamCV.CameraManager - [WARNING] - MainProcess - Terminating process Camera_0
+2026-04-13 19:21:38 - MultiCamCV.CameraManager - [WARNING] - MainProcess - Terminating process Camera_1
+2026-04-13 19:21:43 - MultiCamCV.CameraManager - [WARNING] - MainProcess - Terminating process Camera_2
+2026-04-13 19:21:48 - MultiCamCV.CameraManager - [WARNING] - MainProcess - Terminating process Camera_3
+2026-04-13 19:21:48 - MultiCamCV.CameraManager - [INFO] - MainProcess - All camera processes stopped
+2026-04-13 19:21:48 - MultiCamCV.Pipeline - [INFO] - MainProcess - Pipeline stopped
+2026-04-13 19:21:49 - MultiCamCV.Profiler - [INFO] - MainProcess - Statistics saved to results/system_stats.csv
+2026-04-13 19:21:49 - MultiCamCV.Profiler - [INFO] - MainProcess - Profiler stopped
+2026-04-13 19:21:49 - MultiCamCV - [INFO] - MainProcess - Generating visualizations...
+2026-04-13 19:21:49 - MultiCamCV.Visualizer - [INFO] - MainProcess - Loaded 42 data points
+2026-04-13 19:21:49 - MultiCamCV.Visualizer - [INFO] - MainProcess - Generating visualizations...
+2026-04-13 19:21:50 - MultiCamCV.Visualizer - [INFO] - MainProcess - Saved: results\fps_comparison.png
+2026-04-13 19:21:50 - MultiCamCV.Visualizer - [INFO] - MainProcess - Saved: results\cpu_usage.png
+2026-04-13 19:21:50 - MultiCamCV.Visualizer - [INFO] - MainProcess - Saved: results\memory_usage.png
+2026-04-13 19:21:51 - MultiCamCV.Visualizer - [INFO] - MainProcess - Saved: results\gpu_usage.png
+2026-04-13 19:21:51 - MultiCamCV.Visualizer - [INFO] - MainProcess - Saved: results\system_overview.png
+2026-04-13 19:21:51 - MultiCamCV.Visualizer - [INFO] - MainProcess - All plots generated
+2026-04-13 19:21:52 - MultiCamCV.Visualizer - [INFO] - MainProcess - Saved: results\summary_report.txt
+2026-04-13 19:21:52 - MultiCamCV - [INFO] - MainProcess - Visualizations complete
+2026-04-13 19:21:52 - MultiCamCV - [INFO] - MainProcess - System stopped
