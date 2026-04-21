@@ -75,9 +75,14 @@ class MultiCameraSystem:
                 self.logger.info("Pre-starting camera manager before CUDA initialization...")
                 self.camera_manager.start()
 
-            # Detector
+            # Detector (backend selectable: pytorch | onnx)
             self.logger.info("Initializing detector...")
-            self.detector = YOLODetector(self.config)
+            backend = self.config.get('backend', 'pytorch')
+            if backend == 'onnx':
+                from detection.onnx_detector import ONNXDetector  # lazy import
+                self.detector = ONNXDetector(self.config)
+            else:
+                self.detector = YOLODetector(self.config)
             
             # Pipeline
             self.logger.info("Initializing pipeline...")
@@ -152,25 +157,61 @@ class MultiCameraSystem:
     def _generate_visualizations(self):
         """Generate performance visualizations"""
         self.logger.info("Generating visualizations...")
-        
+
         try:
             viz = Visualizer(
                 self.config['stats_file'],
                 self.config['output_dir']
             )
-            
+
             viz.generate_all_plots()
-            
+
             summary = self.profiler.get_summary()
             viz.generate_summary_report(summary)
-            
+
             self.profiler.print_summary()
             self.detector.print_stats()
-            
+
+            # Machine-readable run summary for experiment runners
+            self._write_run_summary(summary)
+
             self.logger.info("Visualizations complete")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to generate visualizations: {e}")
+
+    def _write_run_summary(self, profiler_summary):
+        """Write a compact JSON summary of the run for automated analysis."""
+        import json
+        from pathlib import Path as _P
+
+        output_dir = _P(self.config.get('output_dir', 'results/'))
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        pipeline_summary = (self.pipeline_manager.get_summary()
+                            if self.pipeline_manager else {})
+        detector_stats = (self.detector.get_statistics()
+                          if self.detector else {})
+
+        payload = {
+            'config': {
+                'device': self.config.get('device'),
+                'model_name': self.config.get('model_name'),
+                'batch_size': self.config.get('batch_size'),
+                'num_cameras': self.config.get('num_cameras'),
+                'use_fp16': self.config.get('use_fp16', False),
+                'use_gpu_preprocess': self.config.get('use_gpu_preprocess', False),
+                'backend': self.config.get('backend', 'pytorch'),
+            },
+            'pipeline': pipeline_summary,
+            'detector': detector_stats,
+            'profiler': profiler_summary,
+        }
+
+        out_path = output_dir / 'run_summary.json'
+        with out_path.open('w') as f:
+            json.dump(payload, f, indent=2, default=str)
+        self.logger.info(f"Saved run summary: {out_path}")
 
 
 def main():
@@ -214,8 +255,8 @@ def main():
         '--device',
         type=str,
         default='cuda',
-        choices=['cuda', 'cpu'],
-        help='Processing device'
+        choices=['cuda', 'cpu', 'mps', 'auto'],
+        help='Processing device (mps = Apple Silicon GPU, auto = pick best)'
     )
     parser.add_argument(
         '--batch-size',
@@ -223,14 +264,40 @@ def main():
         default=4,
         help='Batch size for inference'
     )
-    
+    parser.add_argument(
+        '--backend',
+        type=str,
+        default='pytorch',
+        choices=['pytorch', 'onnx'],
+        help='Inference backend (pytorch = Ultralytics YOLOv8, onnx = ONNX Runtime)'
+    )
+    parser.add_argument(
+        '--fp16',
+        action='store_true',
+        help='Enable FP16 mixed precision (CUDA only, no-op on CPU/MPS)'
+    )
+    parser.add_argument(
+        '--gpu-preprocess',
+        action='store_true',
+        help='Run resize/normalize on the GPU (requires CUDA or MPS)'
+    )
+    parser.add_argument(
+        '--no-detailed-profiling',
+        action='store_true',
+        help='Disable per-stage profiler (default: enabled)'
+    )
+
     args = parser.parse_args()
-    
+
     # Create configuration
     config = SYSTEM_CONFIG.copy()
     config['model_name'] = args.model
     config['device'] = args.device
     config['batch_size'] = args.batch_size
+    config['backend'] = args.backend
+    config['use_fp16'] = bool(args.fp16)
+    config['use_gpu_preprocess'] = bool(args.gpu_preprocess)
+    config['enable_detailed_profiling'] = not args.no_detailed_profiling
     
     if args.webcam:
         config['num_cameras'] = 1
@@ -250,13 +317,15 @@ def main():
     print(f"Model: {config['model_name']}")
     print(f"Device: {config['device'].upper()}")
     print(f"Batch Size: {config['batch_size']}")
+    print(f"Backend: {config['backend']}")
+    print(f"FP16: {config['use_fp16']} | GPU preprocess: {config['use_gpu_preprocess']}")
     print(f"Duration: {args.duration if args.duration else 'Continuous'}s")
     print("="*70)
     print("\nKey Features:")
-    print("  ✓ Multiprocessing (one process per camera)")
-    print("  ✓ GPU-accelerated detection")
-    print("  ✓ Real-time performance profiling")
-    print("  ✓ Automatic visualization generation")
+    print("  * Multiprocessing (one process per camera)")
+    print("  * GPU-accelerated detection (CUDA / MPS / CPU)")
+    print("  * Per-stage latency histograms (E4)")
+    print("  * Machine-readable run_summary.json for automation")
     print("="*70 + "\n")
     
     # Run system
