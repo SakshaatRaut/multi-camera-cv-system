@@ -28,7 +28,7 @@ curl http://10.0.0.41:8000/api/health
 
 # terminal 2 — submit your existing results without re-running the 40-min suite
 
-python web/agent.py --server http://localhost:8000 --device-label "Your GPU Name" --skip-run
+python web/agent.py --server http://10.0.0.41:8000 --device-label "YOUR GPU NAME" --skip-run
 
 # open http://10.0.0.41:8000/ in a browser
 
@@ -36,7 +36,7 @@ python web/agent.py --server http://localhost:8000 --device-label "Your GPU Name
 
 # For Windows Users
 
-# python main.py --video-sources videos/cam{1..8}.mp4 --device auto --duration 30 --run-experiments all
+python main.py --video-sources videos/cam{1..8}.mp4 --device auto --duration 30 --run-experiments all
 
 # terminal 1 — run the coordinator
 
@@ -46,6 +46,6 @@ curl http://10.0.0.41:8000/api/health
 
 # terminal 2 — submit your existing results without re-running the 40-min suite
 
-python web/agent.py --server http://localhost:8000 --device-label "Your GPU Name" --skip-run
+python web/agent.py --server http://10.0.0.41:8000 --device-label "YOUR GPU NAME" --skip-run
 
 # open http://10.0.0.41:8000/ in a browser
