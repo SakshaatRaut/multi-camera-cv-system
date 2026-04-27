@@ -213,7 +213,6 @@ __marimo__/
 # These directories contain ephemeral data that must NEVER be in git.
 # Each laptop produces its own copies; sharing happens via the dashboard
 # (web/agent.py -> coordinator), not via git.
-videos/
 results/
 experiments/results/
 
