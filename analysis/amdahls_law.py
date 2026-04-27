@@ -157,10 +157,24 @@ class AmdahlsLawAnalyzer:
         
         report.append("")
         report.append("THEORETICAL LIMITS:")
+        # Use the Amdahl model to extrapolate — these may fall outside the
+        # measured stream counts, so we compute them from P directly rather
+        # than looking them up in the measurements dict.
+        def _extrapolate(n, P):
+            if P >= 1:
+                return float(n)
+            return 1.0 / ((1.0 - P) + P / n)
+
         max_speedup = 1 / (1 - P) if P < 1 else float('inf')
-        report.append(f"  Maximum possible speedup (infinite streams): {max_speedup:.2f}x")
-        report.append(f"  Speedup at 8 streams: {predictions.get(8, 'N/A'):.2f}x")
-        report.append(f"  Speedup at 16 streams: {predictions.get(16, 'N/A'):.2f}x")
+        report.append(
+            f"  Maximum possible speedup (infinite streams): {max_speedup:.2f}x"
+        )
+        report.append(
+            f"  Speedup at 8 streams:  {_extrapolate(8, P):.2f}x"
+        )
+        report.append(
+            f"  Speedup at 16 streams: {_extrapolate(16, P):.2f}x"
+        )
         
         report.append("")
         report.append("="*70)

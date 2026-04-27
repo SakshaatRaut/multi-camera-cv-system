@@ -1,0 +1,19 @@
+BOTTLENECK ANALYSIS (Experiment E4)
+========================================================================================
+Total pipeline time: 18.103s
+Total frames: 1737
+
+Stage              Share   Mean(ms)   p50(ms)   p95(ms)   p99(ms)   Max(ms)        N
+----------------------------------------------------------------------------------------
+frame_loading      32.9%       3.42      0.38     16.59     24.63     69.77     1737
+preprocessing       0.0%       0.00      0.00      0.00      0.00      0.03      441
+inference          67.1%       7.00      6.55      9.61     11.76    109.23     1737
+postprocessing      0.0%       0.00      0.00      0.00      0.00      0.01     1737
+output              0.0%       0.00      0.00      0.00      0.00      0.01      441
+----------------------------------------------------------------------------------------
+
+Bottleneck: inference (67.1%)
+Recommendations:
+  - Raise batch size (until p95 latency degrades).
+  - Enable FP16 autocast / TensorRT / ONNX Runtime.
+  - Try a smaller YOLO variant (n/s) on the same hardware.

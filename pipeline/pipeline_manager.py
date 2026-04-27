@@ -87,16 +87,45 @@ class PipelineManager:
         # Stop cameras first so no new frames are enqueued.
         self.camera_manager.stop()
 
-        # Drain any frames still sitting in the queue so the processing
-        # thread's `queue.get(timeout=0.1)` returns promptly.
-        try:
-            while True:
-                self.input_queue.get_nowait()
-        except Exception:
-            pass
-
+        # Join the processing thread FIRST. It loops on
+        # `queue.get(timeout=0.1)` guarded by `self.running`, so with
+        # running=False it exits within one tick. We do this before the
+        # drain because on macOS, `mp.Queue.get_nowait()` can block
+        # indefinitely if a child was `terminate()`d mid-write (the rlock
+        # gets acquired, _poll() reports data, then _recv_bytes() stalls
+        # on a partial message). Draining after the consumer thread has
+        # exited sidesteps that race entirely.
         if self.process_thread:
             self.process_thread.join(timeout=2.0)
+            if self.process_thread.is_alive():
+                self.logger.warning(
+                    "Processing thread did not exit within 2s; "
+                    "it's a daemon thread so will die with the process."
+                )
+
+        # Drain in a DAEMON thread with a hard wall-clock cap. Even if
+        # the underlying `get_nowait()` stalls inside `_recv_bytes()` on
+        # a partial message (macOS corner case after forced child
+        # termination), the main thread returns after 0.5s and the
+        # drainer is left to die with the process.
+        def _drain():
+            try:
+                while True:
+                    self.input_queue.get_nowait()
+            except Exception:
+                return
+        drainer = threading.Thread(target=_drain, daemon=True,
+                                   name='PipelineDrainer')
+        drainer.start()
+        drainer.join(timeout=0.5)
+
+        # Hard close so the queue's feeder thread(s) don't keep the
+        # process alive after we return.
+        try:
+            self.input_queue.close()
+            self.input_queue.cancel_join_thread()
+        except Exception:
+            pass
 
         self._print_statistics()
 

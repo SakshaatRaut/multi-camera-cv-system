@@ -1,0 +1,68 @@
+{
+  "config": {
+    "device": "mps",
+    "model_name": "yolov8n.pt",
+    "batch_size": 2,
+    "num_cameras": 4,
+    "use_fp16": false,
+    "use_gpu_preprocess": false,
+    "backend": "pytorch"
+  },
+  "pipeline": {
+    "runtime_s": 84.41255402565002,
+    "total_frames": 1714,
+    "overall_fps": 20.305036611961476,
+    "avg_latency_ms": 1571.3741089387981,
+    "per_camera": {
+      "2": {
+        "frames": 272,
+        "fps": 3.2222695206846685,
+        "avg_latency": 1.1852224697084988,
+        "detections": 146
+      },
+      "3": {
+        "frames": 650,
+        "fps": 7.700276428106745,
+        "avg_latency": 1.9342449987851655,
+        "detections": 1805
+      },
+      "1": {
+        "frames": 262,
+        "fps": 3.1038037294830265,
+        "avg_latency": 0.9886443269161778,
+        "detections": 205
+      },
+      "0": {
+        "frames": 530,
+        "fps": 6.278686933687038,
+        "avg_latency": 1.6125861284867773,
+        "detections": 2618
+      }
+    }
+  },
+  "detector": {
+    "total_detections": 4774,
+    "inference_count": 1714,
+    "avg_inference_time": 0.044456822034775724,
+    "avg_fps": 22.49373558950669,
+    "device": "mps",
+    "model": "yolov8n.pt",
+    "fp16": false,
+    "gpu_preprocess": false
+  },
+  "profiler": {
+    "duration": 82.6807029247284,
+    "avg_cpu_percent": 18.705555555555552,
+    "max_cpu_percent": 48.8,
+    "avg_ram_gb": 10.223279317220053,
+    "max_ram_gb": 11.08349609375,
+    "camera_2_avg_fps": 2.0814226788356343,
+    "camera_2_avg_latency": 3.1616318316979153,
+    "camera_3_avg_fps": 4.694579654561307,
+    "camera_3_avg_latency": 4.694742423664599,
+    "camera_1_avg_fps": 1.9940587859046823,
+    "camera_1_avg_latency": 2.689114337024108,
+    "camera_0_avg_fps": 3.8886233865212185,
+    "camera_0_avg_latency": 3.7929567036833327
+  }
+}
