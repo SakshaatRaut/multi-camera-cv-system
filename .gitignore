@@ -210,5 +210,18 @@ marimo/_lsp/
 __marimo__/
 
 # Project-specific
+# These directories contain ephemeral data that must NEVER be in git.
+# Each laptop produces its own copies; sharing happens via the dashboard
+# (web/agent.py -> coordinator), not via git.
 videos/
 results/
+experiments/results/
+
+# Coordinator dashboard runtime state. Lives only on the machine running
+# the coordinator; should never be checked in. The SQLite DB and uploaded
+# submission bundles go here.
+web/data/
+
+# Downloaded YOLO model weights (Ultralytics fetches these on demand)
+*.pt
+*.onnx
