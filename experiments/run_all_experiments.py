@@ -103,6 +103,14 @@ class ExperimentRunner:
 
     def _resolve_device(self, requested):
         if requested == 'cuda' and not self.cuda_available:
+            # Prefer Apple MPS over CPU when running on Mac Silicon.
+            try:
+                if (getattr(torch.backends, 'mps', None)
+                        and torch.backends.mps.is_available()):
+                    print("  note: CUDA unavailable, using MPS (Apple Silicon)")
+                    return 'mps'
+            except Exception:
+                pass
             print("  note: CUDA unavailable, running on CPU")
             return 'cpu'
         return requested

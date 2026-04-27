@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Multi-Camera CV Benchmark Leaderboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161a22;
+    --panel-2: #1c2230;
+    --border: #262c3a;
+    --text: #e6e8ef;
+    --muted: #8a93a6;
+    --accent: #5aa7ff;
+    --accent-2: #7ee787;
+    --warn: #ffb454;
+    --bad:  #ff7b72;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                             Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    padding: 0 24px 64px;
+  }
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 24px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .grid.two { grid-template-columns: 3fr 2fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: 0.02em;
+              text-transform: uppercase; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px;
+           border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  tbody tr:hover { background: var(--panel-2); cursor: pointer; }
+  tbody tr.selected { background: var(--panel-2);
+                      outline: 1px solid var(--accent); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px;
+          font-size: 11px; background: var(--panel-2);
+          border: 1px solid var(--border); color: var(--muted); }
+  .pill.cuda { color: #7ee787; border-color: #2d5c33; }
+  .pill.mps  { color: #5aa7ff; border-color: #2a4470; }
+  .pill.cpu  { color: #ffb454; border-color: #6b4a1f; }
+  .muted { color: var(--muted); }
+  .kv { display: grid; grid-template-columns: max-content 1fr;
+        column-gap: 14px; row-gap: 4px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .chart-wrap { position: relative; height: 340px; }
+  .chart-wrap.short { height: 220px; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; }
+  .row > * { flex: 1 1 320px; min-width: 0; }
+  img.plot { max-width: 100%; border: 1px solid var(--border);
+             border-radius: 6px; background: #fff; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border);
+          margin-bottom: 14px; }
+  .tabs button {
+    background: transparent; border: 0; color: var(--muted);
+    padding: 8px 14px; cursor: pointer; font-size: 13px;
+    border-bottom: 2px solid transparent;
+  }
+  .tabs button.active { color: var(--text);
+                        border-bottom-color: var(--accent); }
+  .tab-body { display: none; }
+  .tab-body.active { display: block; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 0; }
+  button.btn {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; font-size: 12px;
+  }
+  button.btn:hover { border-color: var(--accent); }
+  code.inline { background: var(--panel-2); border: 1px solid var(--border);
+                padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Multi-Camera CV Benchmark &mdash; Leaderboard</h1>
+    <div class="sub">CUDA vs Apple Silicon; FPS, latency, and experiment-suite comparison.</div>
+  </div>
+  <div>
+    <button class="btn" onclick="refresh()">Refresh</button>
+    <span id="status" class="muted" style="margin-left: 10px;"></span>
+  </div>
+</header>
+
+<div class="grid two">
+  <div class="panel">
+    <h2>Devices submitted</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Device</th><th>Accelerator</th><th>FPS</th>
+          <th>Latency</th><th>When</th>
+        </tr>
+      </thead>
+      <tbody id="deviceTable"></tbody>
+    </table>
+    <div id="emptyState" class="empty" style="display:none;">
+      No submissions yet. Run <code class="inline">python web/agent.py --server http://THIS_HOST:8000 --device-label "My Laptop"</code>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Headline FPS (all devices)</h2>
+    <div class="chart-wrap"><canvas id="fpsChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid" style="margin-top: 20px;">
+  <div class="panel">
+    <h2>Latency percentiles &mdash; per device</h2>
+    <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid" style="margin-top: 20px;">
+  <div class="panel">
+    <h2>Experiment-suite comparison</h2>
+    <div class="muted" style="font-size:12px; margin-bottom:10px;">
+      Only devices that submitted a full suite (E1&ndash;E7) appear below.
+    </div>
+    <div class="tabs" id="expTabs">
+      <button class="active" data-tab="e1">E1 CPU vs GPU</button>
+      <button data-tab="e2">E2 Batch size</button>
+      <button data-tab="e3">E3 Scaling</button>
+      <button data-tab="e5">E5 Model sweep</button>
+      <button data-tab="e6">E6 Engines</button>
+      <button data-tab="e7">E7 GPU preproc</button>
+    </div>
+    <div class="tab-body active" data-tab="e1">
+      <div class="chart-wrap"><canvas id="e1Chart"></canvas></div>
+    </div>
+    <div class="tab-body" data-tab="e2">
+      <div class="chart-wrap"><canvas id="e2Chart"></canvas></div>
+    </div>
+    <div class="tab-body" data-tab="e3">
+      <div class="chart-wrap"><canvas id="e3Chart"></canvas></div>
+    </div>
+    <div class="tab-body" data-tab="e5">
+      <div class="chart-wrap"><canvas id="e5Chart"></canvas></div>
+    </div>
+    <div class="tab-body" data-tab="e6">
+      <div class="chart-wrap"><canvas id="e6Chart"></canvas></div>
+    </div>
+    <div class="tab-body" data-tab="e7">
+      <div class="chart-wrap"><canvas id="e7Chart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid" style="margin-top: 20px;">
+  <div class="panel">
+    <h2>Device detail</h2>
+    <div id="detailBody" class="muted">Click a device in the table to see its run details and plots.</div>
+  </div>
+</div>
+
+<script>
+// --------------------------------------------------------------- //
+// Data + state
+// --------------------------------------------------------------- //
+const state = { submissions: [], selectedId: null, details: {} };
+const charts = {};
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} from ${url}`);
+  return r.json();
+}
+
+async function refresh() {
+  setStatus('Loading…');
+  try {
+    const subs = await fetchJSON('/api/submissions');
+    state.submissions = subs;
+    renderTable();
+    renderFpsChart();
+    renderLatencyChart();
+    // Fetch full detail for devices with experiments (for overlay plots)
+    const detailFetches = subs.filter(s => s.has_experiments)
+                              .map(s => ensureDetail(s.id));
+    await Promise.all(detailFetches);
+    renderExperimentCharts();
+    setStatus(`Loaded ${subs.length} submission(s)`);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+}
+
+async function ensureDetail(id) {
+  if (state.details[id]) return state.details[id];
+  const d = await fetchJSON('/api/submissions/' + id);
+  state.details[id] = d;
+  return d;
+}
+
+function setStatus(text) { document.getElementById('status').textContent = text; }
+
+// --------------------------------------------------------------- //
+// Table
+// --------------------------------------------------------------- //
+function renderTable() {
+  const tb = document.getElementById('deviceTable');
+  const empty = document.getElementById('emptyState');
+  tb.innerHTML = '';
+  if (!state.submissions.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  for (const s of state.submissions) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = s.id;
+    if (s.id === state.selectedId) tr.classList.add('selected');
+
+    const acc = (s.hardware && s.hardware.accelerator) ||
+                (s.headline && s.headline.device_mode) || '-';
+    const fps = s.headline && s.headline.overall_fps;
+    const lat = s.headline && s.headline.avg_latency_ms;
+
+    tr.innerHTML = `
+      <td>${escapeHtml(s.device_label)}
+          ${s.has_experiments ? '<span class="pill">E1-E7</span>' : ''}</td>
+      <td><span class="pill ${acc}">${acc}</span>
+          ${s.hardware && s.hardware.gpu_name ? '<div class="muted" style="font-size:11px;">' + escapeHtml(s.hardware.gpu_name) + '</div>' : ''}
+      </td>
+      <td>${fps !== null && fps !== undefined ? Number(fps).toFixed(2) : '—'}</td>
+      <td>${lat !== null && lat !== undefined ? Number(lat).toFixed(1) + ' ms' : '—'}</td>
+      <td class="muted">${formatWhen(s.submitted_at)}</td>
+    `;
+    tr.onclick = () => selectDevice(s.id);
+    tb.appendChild(tr);
+  }
+}
+
+function selectDevice(id) {
+  state.selectedId = id;
+  document.querySelectorAll('#deviceTable tr').forEach(tr => {
+    tr.classList.toggle('selected', tr.dataset.id === id);
+  });
+  renderDetail(id);
+}
+
+async function renderDetail(id) {
+  const body = document.getElementById('detailBody');
+  body.innerHTML = 'Loading…';
+  try {
+    const d = await ensureDetail(id);
+    const hw = d.hardware || {};
+    const cfg = (d.baseline && d.baseline.config) || {};
+    const pl  = (d.baseline && d.baseline.pipeline) || {};
+
+    const plotsHtml = (d.plots || []).map(name =>
+      `<div><div class="muted" style="font-size:11px;">${escapeHtml(name)}</div>
+            <img class="plot" src="/api/submissions/${id}/plot/${encodeURIComponent(name)}" /></div>`
+    ).join('');
+
+    body.innerHTML = `
+      <div class="row">
+        <div>
+          <dl class="kv">
+            <dt>Label</dt><dd>${escapeHtml(d.device_label)}</dd>
+            <dt>Submitted</dt><dd>${formatWhen(d.submitted_at)}</dd>
+            <dt>Git commit</dt><dd><code class="inline">${escapeHtml(d.git_commit || '—')}</code></dd>
+            <dt>Platform</dt><dd>${escapeHtml(hw.platform || '-')}</dd>
+            <dt>Accelerator</dt><dd>${escapeHtml(hw.accelerator || '-')}
+               ${hw.gpu_name ? ' — ' + escapeHtml(hw.gpu_name) : ''}</dd>
+            <dt>CPU cores</dt><dd>${hw.cpu_count_logical || '-'} logical /
+                ${hw.cpu_count_physical || '-'} physical</dd>
+            <dt>RAM</dt><dd>${hw.ram_gb ? hw.ram_gb + ' GB' : '-'}</dd>
+            <dt>torch</dt><dd>${escapeHtml(hw.torch || '-')}</dd>
+          </dl>
+        </div>
+        <div>
+          <dl class="kv">
+            <dt>Device mode</dt><dd>${escapeHtml(cfg.device || '-')}</dd>
+            <dt>Model</dt><dd>${escapeHtml(cfg.model_name || '-')}</dd>
+            <dt>Cameras</dt><dd>${cfg.num_cameras || '-'}</dd>
+            <dt>Batch</dt><dd>${cfg.batch_size || '-'}</dd>
+            <dt>Backend</dt><dd>${escapeHtml(cfg.backend || '-')}</dd>
+            <dt>FP16</dt><dd>${cfg.use_fp16 ? 'yes' : 'no'}</dd>
+            <dt>GPU preproc</dt><dd>${cfg.use_gpu_preprocess ? 'yes' : 'no'}</dd>
+            <dt>Overall FPS</dt><dd>${fmt(pl.overall_fps, 2)}</dd>
+            <dt>Avg latency</dt><dd>${fmt(pl.avg_latency_ms, 1)} ms</dd>
+            <dt>Frames</dt><dd>${pl.total_frames || '-'}</dd>
+            <dt>Detections</dt><dd>${(d.baseline && d.baseline.detector &&
+                 d.baseline.detector.total_detections) || '-'}</dd>
+          </dl>
+        </div>
+      </div>
+
+      ${d.notes ? '<p class="muted" style="margin-top:14px;">' +
+          escapeHtml(d.notes) + '</p>' : ''}
+
+      ${plotsHtml ? '<h3 style="font-size:13px; color:var(--muted); ' +
+         'letter-spacing:0.02em; text-transform:uppercase; margin-top:18px;">Plots</h3>' +
+         '<div class="row" style="margin-top:10px;">' + plotsHtml + '</div>'
+         : ''}
+    `;
+  } catch (e) {
+    body.innerHTML = '<div class="empty">Error loading detail: ' +
+                     escapeHtml(e.message) + '</div>';
+  }
+}
+
+// --------------------------------------------------------------- //
+// Charts
+// --------------------------------------------------------------- //
+const PALETTE = ['#5aa7ff', '#7ee787', '#ffb454', '#ff7b72',
+                 '#d2a8ff', '#ffa657', '#79c0ff', '#a5d6a7'];
+
+function colorFor(i) { return PALETTE[i % PALETTE.length]; }
+
+function destroyChart(key) {
+  if (charts[key]) { charts[key].destroy(); charts[key] = null; }
+}
+
+function renderFpsChart() {
+  destroyChart('fps');
+  const rows = state.submissions.filter(
+    s => s.headline && s.headline.overall_fps != null);
+  const ctx = document.getElementById('fpsChart');
+  charts.fps = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(s => s.device_label),
+      datasets: [{
+        label: 'Overall FPS',
+        data: rows.map(s => s.headline.overall_fps),
+        backgroundColor: rows.map((_, i) => colorFor(i)),
+      }],
+    },
+    options: barOpts('FPS (higher is better)'),
+  });
+}
+
+function renderLatencyChart() {
+  destroyChart('lat');
+  const rows = state.submissions.filter(
+    s => s.headline && s.headline.avg_latency_ms != null);
+  const ctx = document.getElementById('latencyChart');
+  charts.lat = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(s => s.device_label),
+      datasets: [{
+        label: 'Avg latency (ms)',
+        data: rows.map(s => s.headline.avg_latency_ms),
+        backgroundColor: rows.map((_, i) => colorFor(i)),
+      }],
+    },
+    options: barOpts('Avg latency (ms, lower is better)'),
+  });
+}
+
+// --- E1 CPU vs GPU: grouped bars per device
+function renderExperimentCharts() {
+  const detailList = state.submissions
+    .filter(s => s.has_experiments)
+    .map(s => state.details[s.id])
+    .filter(Boolean);
+
+  renderE1Chart(detailList);
+  renderE2Chart(detailList);
+  renderE3Chart(detailList);
+  renderE5Chart(detailList);
+  renderE6Chart(detailList);
+  renderE7Chart(detailList);
+}
+
+function renderE1Chart(details) {
+  destroyChart('e1');
+  const labels = details.map(d => d.device_label);
+  const gpuFps = details.map(d => pickE1(d, 'gpu'));
+  const cpuFps = details.map(d => pickE1(d, 'cpu'));
+  charts.e1 = new Chart(document.getElementById('e1Chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'GPU', data: gpuFps, backgroundColor: '#7ee787' },
+        { label: 'CPU', data: cpuFps, backgroundColor: '#ffb454' },
+      ],
+    },
+    options: barOpts('E1 FPS by device'),
+  });
+}
+
+function pickE1(detail, which) {
+  const runs = (((detail.experiments || {}).experiments || {}).E1 || {}).runs;
+  if (!runs) return null;
+  const row = runs.find(r => r.label === which);
+  return row ? row.overall_fps : null;
+}
+
+function renderE2Chart(details) {
+  destroyChart('e2');
+  const xs = [1, 2, 4, 8, 16];
+  const datasets = details.map((d, i) => {
+    const runs = (((d.experiments || {}).experiments || {}).E2 || {}).runs || [];
+    const byBs = Object.fromEntries(runs.map(r => [r.batch_size, r.fps]));
+    return {
+      label: d.device_label,
+      data: xs.map(x => byBs[x] ?? null),
+      borderColor: colorFor(i),
+      backgroundColor: colorFor(i) + '33',
+      tension: 0.2, spanGaps: true,
+    };
+  });
+  charts.e2 = new Chart(document.getElementById('e2Chart'), {
+    type: 'line',
+    data: { labels: xs.map(String), datasets },
+    options: lineOpts('FPS vs batch size'),
+  });
+}
+
+function renderE3Chart(details) {
+  destroyChart('e3');
+  const xs = [1, 2, 4, 8];
+  const datasets = details.map((d, i) => {
+    const runs = (((d.experiments || {}).experiments || {}).E3 || {}).runs || [];
+    const byN = Object.fromEntries(runs.map(r => [r.streams, r.fps]));
+    return {
+      label: d.device_label,
+      data: xs.map(x => byN[x] ?? null),
+      borderColor: colorFor(i),
+      backgroundColor: colorFor(i) + '33',
+      tension: 0.2, spanGaps: true,
+    };
+  });
+  charts.e3 = new Chart(document.getElementById('e3Chart'), {
+    type: 'line',
+    data: { labels: xs.map(String), datasets },
+    options: lineOpts('FPS vs number of streams (Amdahl scaling)'),
+  });
+}
+
+function renderE5Chart(details) {
+  destroyChart('e5');
+  const xs = ['yolov8n.pt', 'yolov8s.pt', 'yolov8m.pt',
+              'yolov8l.pt', 'yolov8x.pt'];
+  const datasets = details.map((d, i) => {
+    const runs = (((d.experiments || {}).experiments || {}).E5 || {}).runs || [];
+    const byM = Object.fromEntries(runs.map(r => [r.model, r.fps]));
+    return {
+      label: d.device_label,
+      data: xs.map(x => byM[x] ?? null),
+      backgroundColor: colorFor(i),
+    };
+  });
+  charts.e5 = new Chart(document.getElementById('e5Chart'), {
+    type: 'bar',
+    data: { labels: xs, datasets },
+    options: barOpts('E5 model-size sweep'),
+  });
+}
+
+function renderE6Chart(details) {
+  destroyChart('e6');
+  const xs = ['pytorch_fp32', 'pytorch_fp16', 'onnxruntime'];
+  const datasets = details.map((d, i) => {
+    const runs = (((d.experiments || {}).experiments || {}).E6 || {}).runs || [];
+    const byS = Object.fromEntries(runs.map(r => [r.scenario, r.fps]));
+    return {
+      label: d.device_label,
+      data: xs.map(x => byS[x] ?? null),
+      backgroundColor: colorFor(i),
+    };
+  });
+  charts.e6 = new Chart(document.getElementById('e6Chart'), {
+    type: 'bar',
+    data: { labels: xs, datasets },
+    options: barOpts('E6 inference engine comparison'),
+  });
+}
+
+function renderE7Chart(details) {
+  destroyChart('e7');
+  const xs = ['cpu_preproc', 'gpu_preproc', 'gpu_preproc_fp16'];
+  const datasets = details.map((d, i) => {
+    const runs = (((d.experiments || {}).experiments || {}).E7 || {}).runs || [];
+    const byS = Object.fromEntries(runs.map(r => [r.scenario, r.fps]));
+    return {
+      label: d.device_label,
+      data: xs.map(x => byS[x] ?? null),
+      backgroundColor: colorFor(i),
+    };
+  });
+  charts.e7 = new Chart(document.getElementById('e7Chart'), {
+    type: 'bar',
+    data: { labels: xs, datasets },
+    options: barOpts('E7 GPU preprocessing + CUDA streams'),
+  });
+}
+
+function barOpts(title) {
+  return {
+    maintainAspectRatio: false, responsive: true,
+    plugins: {
+      legend: { labels: { color: '#e6e8ef' } },
+      title: { display: !!title, text: title, color: '#8a93a6' },
+    },
+    scales: {
+      x: { ticks: { color: '#8a93a6' }, grid: { color: '#262c3a' } },
+      y: { ticks: { color: '#8a93a6' }, grid: { color: '#262c3a' },
+           beginAtZero: true },
+    },
+  };
+}
+function lineOpts(title) {
+  const o = barOpts(title);
+  o.elements = { point: { radius: 4 } };
+  return o;
+}
+
+// --------------------------------------------------------------- //
+// Tabs
+// --------------------------------------------------------------- //
+document.querySelectorAll('#expTabs button').forEach(btn => {
+  btn.onclick = () => {
+    const t = btn.dataset.tab;
+    document.querySelectorAll('#expTabs button').forEach(b =>
+      b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tab-body').forEach(tb =>
+      tb.classList.toggle('active', tb.dataset.tab === t));
+  };
+});
+
+// --------------------------------------------------------------- //
+// Utils
+// --------------------------------------------------------------- //
+function fmt(v, digits) {
+  if (v == null || isNaN(v)) return '—';
+  return Number(v).toFixed(digits || 2);
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function formatWhen(iso) {
+  if (!iso) return '-';
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+// --------------------------------------------------------------- //
+// Boot + auto-refresh
+// --------------------------------------------------------------- //
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

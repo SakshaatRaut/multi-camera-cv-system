@@ -1,0 +1,18 @@
+BOTTLENECK ANALYSIS (Experiment E4)
+========================================================================================
+Total pipeline time: 28.175s
+Total frames: 1245
+
+Stage              Share   Mean(ms)   p50(ms)   p95(ms)   p99(ms)   Max(ms)        N
+----------------------------------------------------------------------------------------
+frame_loading      53.9%      12.19      7.15     33.89     34.08     36.38     1246
+preprocessing       0.0%       0.00      0.00      0.00      0.00      0.02      427
+inference          46.1%      10.43      8.88     16.15     30.12     92.04     1245
+postprocessing      0.0%       0.00      0.00      0.00      0.00      0.01     1245
+output              0.0%       0.00      0.00      0.00      0.00      0.01      427
+----------------------------------------------------------------------------------------
+
+Bottleneck: frame_loading (53.9%)
+Recommendations:
+  - Faster storage (NVMe), larger queue, hardware video decode.
+  - Increase buffer_size / max_queue_size; reduce resolution.

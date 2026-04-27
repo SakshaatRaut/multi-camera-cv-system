@@ -286,6 +286,15 @@ def main():
         action='store_true',
         help='Disable per-stage profiler (default: enabled)'
     )
+    parser.add_argument(
+        '--run-experiments',
+        type=str,
+        default='none',
+        choices=['none', 'core', 'all',
+                 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7'],
+        help=('After the baseline run, also run the experiment suite. '
+              'core=E1-E4, all=E1-E7, or pick a single experiment.')
+    )
 
     args = parser.parse_args()
 
@@ -331,6 +340,75 @@ def main():
     # Run system
     system = MultiCameraSystem(config)
     system.start(duration=args.duration)
+
+    # ---------------------------------------------------------------- #
+    # Optional: chain the experiment suite after the baseline run.
+    #
+    # ExperimentRunner spawns main.py subprocesses for each experiment
+    # configuration, but those subprocess invocations do NOT include
+    # --run-experiments, so there is no recursion.
+    # ---------------------------------------------------------------- #
+    if args.run_experiments != 'none':
+        import shutil
+        from pathlib import Path as _P
+
+        results_dir = _P(config.get('output_dir', 'results/'))
+        baseline_dir = results_dir / 'baseline'
+        baseline_dir.mkdir(parents=True, exist_ok=True)
+
+        # Preserve the baseline artifacts BEFORE ExperimentRunner starts
+        # overwriting results/ with per-experiment runs.
+        preserved = 0
+        for src in results_dir.iterdir():
+            if src.is_file() and src.name != '.DS_Store':
+                try:
+                    shutil.copy2(src, baseline_dir / src.name)
+                    preserved += 1
+                except Exception as exc:
+                    print(f"  warning: could not preserve {src.name}: {exc}")
+
+        print("\n" + "=" * 70)
+        print(f"BASELINE RUN COMPLETE. Starting experiment suite: "
+              f"{args.run_experiments}")
+        print(f"Preserved {preserved} baseline artifacts in: {baseline_dir}")
+        print("=" * 70 + "\n")
+
+        try:
+            from experiments.run_all_experiments import ExperimentRunner
+        except Exception as exc:
+            print(f"[ERROR] Could not import ExperimentRunner: {exc}")
+            return
+
+        runner = ExperimentRunner()
+        exp_duration = args.duration or 30
+        choice = args.run_experiments
+
+        dispatch = {
+            'e1': lambda: runner.run_experiment_e1_cpu_vs_gpu(exp_duration),
+            'e2': lambda: runner.run_experiment_e2_batch_size(exp_duration),
+            'e3': lambda: runner.run_experiment_e3_scaling(exp_duration),
+            'e4': lambda: runner.run_experiment_e4_bottleneck(exp_duration),
+            'e5': lambda: runner.run_experiment_e5_model_sweep(exp_duration),
+            'e6': lambda: runner.run_experiment_e6_engines(exp_duration),
+            'e7': lambda: runner.run_experiment_e7_gpu_preprocess(exp_duration),
+            'core': lambda: runner.run_all_experiments(
+                duration=exp_duration, include_extended=False),
+            'all': lambda: runner.run_all_experiments(
+                duration=exp_duration, include_extended=True),
+        }
+
+        try:
+            dispatch[choice]()
+        except Exception as exc:
+            import traceback
+            print(f"\n[ERROR] Experiment suite failed: {exc}")
+            traceback.print_exc()
+
+        print("\n" + "=" * 70)
+        print("ALL DONE.")
+        print(f"  Baseline:    {baseline_dir}")
+        print(f"  Experiments: {runner.output_dir}")
+        print("=" * 70)
 
 
 if __name__ == '__main__':

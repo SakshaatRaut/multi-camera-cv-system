@@ -1,0 +1,27 @@
+======================================================================
+AMDAHL'S LAW ANALYSIS (Experiment E3)
+======================================================================
+
+Estimated Parallel Fraction (P): 0.906
+Serial Fraction (1-P): 0.094
+
+Speedup Analysis:
+----------------------------------------------------------------------
+Streams    Measured FPS    Speedup         Predicted       Error
+----------------------------------------------------------------------
+1          26.04           1.00            1.00            0.0%
+2          36.14           1.39            1.83            24.0%
+4          82.78           3.18            3.12            2.0%
+8          125.44          4.82            4.82            0.0%
+----------------------------------------------------------------------
+
+INTERPRETATION:
+✓ Excellent parallelization (P > 0.9)
+  System scales well with multiple streams
+
+THEORETICAL LIMITS:
+  Maximum possible speedup (infinite streams): 10.60x
+  Speedup at 8 streams:  4.82x
+  Speedup at 16 streams: 6.62x
+
+======================================================================

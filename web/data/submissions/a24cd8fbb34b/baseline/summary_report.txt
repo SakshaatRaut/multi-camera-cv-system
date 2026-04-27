@@ -1,0 +1,25 @@
+============================================================
+PERFORMANCE REPORT
+============================================================
+
+Duration: 32.68s
+
+CPU:
+  Average: 13.3%
+  Peak: 69.4%
+
+RAM:
+  Average: 10.44GB
+  Peak: 10.78GB
+
+PER-CAMERA:
+  Camera 3: 22.73 FPS, 1031.3ms
+  Camera 7: 21.93 FPS, 295.4ms
+  Camera 5: 9.36 FPS, 82.7ms
+  Camera 0: 18.42 FPS, 176.9ms
+  Camera 2: 9.52 FPS, 86.4ms
+  Camera 1: 8.85 FPS, 85.4ms
+  Camera 6: 9.69 FPS, 82.0ms
+  Camera 4: 19.49 FPS, 156.6ms
+
+============================================================
