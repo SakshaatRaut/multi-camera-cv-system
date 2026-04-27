@@ -142,12 +142,14 @@ class ExperimentRunner:
         """Run main.py, then relocate its results/ files under experiments/results/."""
         subprocess.run(cmd, cwd=self.project_root)
 
-        # Read the machine-readable summary (for aggregation)
+        # Read the machine-readable summary (for aggregation).
+        # Explicit UTF-8 so this works on Windows where read_text() would
+        # otherwise default to cp1252 and choke on non-ASCII content.
         summary_path = self.results_dir / 'run_summary.json'
         run_summary = {}
         if summary_path.exists():
             try:
-                run_summary = json.loads(summary_path.read_text())
+                run_summary = json.loads(summary_path.read_text(encoding='utf-8'))
             except Exception as exc:
                 print(f"  (warning: could not parse run_summary.json: {exc})")
 

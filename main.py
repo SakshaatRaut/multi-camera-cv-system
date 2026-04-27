@@ -209,7 +209,9 @@ class MultiCameraSystem:
         }
 
         out_path = output_dir / 'run_summary.json'
-        with out_path.open('w') as f:
+        # encoding='utf-8' for cross-platform safety. Without it Windows
+        # defaults to cp1252 and any non-ASCII string in the payload crashes.
+        with out_path.open('w', encoding='utf-8') as f:
             json.dump(payload, f, indent=2, default=str)
         self.logger.info(f"Saved run summary: {out_path}")
 

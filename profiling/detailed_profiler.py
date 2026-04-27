@@ -185,12 +185,13 @@ class DetailedProfiler:
 
         # 1. JSON dump (machine-readable)
         json_path = output_dir / 'bottleneck_analysis.json'
-        with json_path.open('w') as f:
+        with json_path.open('w', encoding='utf-8') as f:
             json.dump(analysis, f, indent=2)
 
-        # 2. Text summary (human-readable)
+        # 2. Text summary (human-readable). UTF-8 because the report may
+        # contain bullet/box characters that cp1252 (Windows default) can't encode.
         txt_path = output_dir / 'bottleneck_analysis.txt'
-        with txt_path.open('w') as f:
+        with txt_path.open('w', encoding='utf-8') as f:
             f.write("BOTTLENECK ANALYSIS (Experiment E4)\n")
             f.write("=" * 88 + "\n")
             f.write(f"Total pipeline time: {analysis['total_time']:.3f}s\n")
