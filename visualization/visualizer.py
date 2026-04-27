@@ -199,7 +199,9 @@ class Visualizer:
     def generate_summary_report(self, profiler_summary):
         report_file = self.output_dir / 'summary_report.txt'
         
-        with open(report_file, 'w') as f:
+        # encoding='utf-8' for Windows compatibility — the default cp1252
+        # codec can't represent Unicode glyphs that may appear in stats text.
+        with open(report_file, 'w', encoding='utf-8') as f:
             f.write("="*60 + "\n")
             f.write("PERFORMANCE REPORT\n")
             f.write("="*60 + "\n\n")

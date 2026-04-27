@@ -132,7 +132,8 @@ def find_videos(project_root: Path, num: int = 8) -> list[str]:
 
 
 def run_main(project_root: Path, *, mode: str, device: str,
-             duration: int, model: str) -> int:
+             duration: int, model: str,
+             use_fp16: bool, use_gpu_preprocess: bool) -> int:
     """Invoke `python main.py ...`. Returns the subprocess exit code."""
     videos = find_videos(project_root, num=8)
     cmd = [
@@ -142,6 +143,10 @@ def run_main(project_root: Path, *, mode: str, device: str,
         '--duration', str(duration),
         '--model', model,
     ]
+    if use_fp16:
+        cmd.append('--fp16')
+    if use_gpu_preprocess:
+        cmd.append('--gpu-preprocess')
     if mode == 'full':
         cmd += ['--run-experiments', 'all']
     elif mode == 'core':
@@ -273,6 +278,17 @@ def main() -> None:
                    help='Baseline run duration (seconds)')
     p.add_argument('--model', default='yolov8n.pt',
                    help='Default YOLO variant for the baseline run')
+    p.add_argument('--fp16', action='store_true',
+                   help='Force FP16 baseline (CUDA only). '
+                        'On CUDA this is auto-enabled unless --vanilla is set.')
+    p.add_argument('--gpu-preprocess', action='store_true',
+                   help='Force GPU preprocessing for the baseline. '
+                        'On CUDA this is auto-enabled unless --vanilla is set.')
+    p.add_argument('--vanilla', action='store_true',
+                   help='Disable auto-optimization. Run a vanilla FP32+CPU-preproc '
+                        'baseline regardless of accelerator. Useful for fair '
+                        'cross-device comparison; the optimized numbers still '
+                        'land in the E6/E7 experiment charts.')
     p.add_argument('--notes', default='',
                    help='Free-form notes shown next to the submission')
     p.add_argument('--skip-run', action='store_true',
@@ -286,18 +302,35 @@ def main() -> None:
     hardware = detect_hardware()
     git_commit = detect_git_commit(project_root)
 
+    # Auto-optimize the baseline on CUDA so the headline FPS bar reflects
+    # realistic GPU throughput, not a deliberately-crippled FP32 number.
+    # MPS doesn't gain from these flags (FP16 path is CUDA-only in our
+    # detector), so we keep the existing behavior there. CPU obviously skips.
+    accelerator = hardware.get('accelerator')
+    auto_optimize = (accelerator == 'cuda') and not args.vanilla
+    use_fp16 = args.fp16 or auto_optimize
+    use_gpu_preprocess = args.gpu_preprocess or auto_optimize
+
     print('Agent starting with:')
     print(f'  server       : {args.server}')
     print(f'  device_label : {args.device_label}')
     print(f'  mode         : {args.mode}')
-    print(f'  accelerator  : {hardware.get("accelerator")}')
+    print(f'  accelerator  : {accelerator}')
     print(f'  gpu_name     : {hardware.get("gpu_name", "-")}')
     print(f'  git_commit   : {git_commit or "(unknown)"}')
+    print(f'  baseline fp16: {use_fp16}'
+          + ('  (auto-enabled on CUDA)' if auto_optimize and not args.fp16
+             else ''))
+    print(f'  baseline gpu_preproc: {use_gpu_preprocess}'
+          + ('  (auto-enabled on CUDA)' if auto_optimize and not args.gpu_preprocess
+             else ''))
 
     if not args.skip_run:
         code = run_main(project_root, mode=args.mode,
                         device=args.device, duration=args.duration,
-                        model=args.model)
+                        model=args.model,
+                        use_fp16=use_fp16,
+                        use_gpu_preprocess=use_gpu_preprocess)
         if code != 0:
             print(f'\nmain.py exited with code {code}.  Aborting upload.')
             sys.exit(code)

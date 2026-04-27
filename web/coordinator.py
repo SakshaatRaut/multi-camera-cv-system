@@ -120,7 +120,9 @@ def _read_json_safe(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     try:
-        return json.loads(path.read_text())
+        # Always read as UTF-8 — submissions come from Windows/Mac/Linux
+        # agents, all of which write UTF-8 by our convention.
+        return json.loads(path.read_text(encoding='utf-8'))
     except Exception:
         return {}
 
@@ -139,7 +141,7 @@ def dashboard() -> HTMLResponse:
             '<p>Place <code>dashboard.html</code> next to <code>coordinator.py</code>.</p>',
             status_code=200,
         )
-    return HTMLResponse(DASHBOARD_HTML.read_text())
+    return HTMLResponse(DASHBOARD_HTML.read_text(encoding='utf-8'))
 
 
 @app.get('/api/health')
@@ -254,7 +256,7 @@ async def create_submission(
     if exp_dir.exists():
         for p in exp_dir.glob('*_summary.json'):
             try:
-                per_run[p.stem] = json.loads(p.read_text())
+                per_run[p.stem] = json.loads(p.read_text(encoding='utf-8'))
             except Exception:
                 pass
 

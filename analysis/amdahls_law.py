@@ -183,7 +183,10 @@ class AmdahlsLawAnalyzer:
         report_text = '\n'.join(report)
         print(report_text)
         
-        with open(output_file, 'w') as f:
+        # encoding='utf-8' is required because the report contains
+        # Unicode check/cross marks (✓ ⚠ ✗). On Windows the default is
+        # cp1252 which can't encode them and crashes here.
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(report_text)
         
         self.logger.info(f"Amdahl's Law report saved to {output_file}")
