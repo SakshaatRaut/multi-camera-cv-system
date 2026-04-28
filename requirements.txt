@@ -26,6 +26,10 @@ onnxruntime>=1.16.0
 onnx>=1.15.0
 onnxslim>=0.1.30
 
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+
 # Optional: GPU Support
 # Install CUDA-enabled PyTorch separately:
 # pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
