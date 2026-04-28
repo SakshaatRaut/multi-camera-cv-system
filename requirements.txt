@@ -20,6 +20,12 @@ pandas>=2.0.0
 pillow>=9.5.0
 tqdm>=4.65.0
 
+#   * CUDA:           pip uninstall -y onnxruntime && pip install onnxruntime-gpu
+#   * Apple Silicon:  pip uninstall -y onnxruntime && pip install onnxruntime-silicon
+onnxruntime>=1.16.0
+onnx>=1.15.0
+onnxslim>=0.1.30
+
 # Optional: GPU Support
 # Install CUDA-enabled PyTorch separately:
 # pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118

@@ -107,15 +107,41 @@ class ONNXDetector:
         self._warmup()
 
     def _select_providers(self, device_preference, available):
+        """
+        Pick ONNX Runtime execution providers based on device preference.
+
+        CoreMLExecutionProvider is INTENTIONALLY skipped by default because
+        it has a known incompatibility with YOLOv8 dynamic-batch ONNX
+        graphs: the session opens, warmup with batch=1 succeeds, then real
+        inference at batch>=2 throws "error code: -1" on every call. This
+        is a CoreML NeuralNetwork backend limitation, not our bug.
+
+        To opt back into CoreML (e.g. to test if a future version fixes it),
+        set onnx_use_coreml=True in the system config or pass --onnx-coreml
+        at the CLI. CPU is always the safe fallback and still produces a
+        meaningful PyTorch-vs-ONNX comparison.
+        """
         pref = (device_preference or 'auto').lower()
+        use_coreml = bool(self.config.get('onnx_use_coreml', False))
+
         ordered = []
         if pref in ('cuda', 'auto') and 'CUDAExecutionProvider' in available:
             ordered.append('CUDAExecutionProvider')
-        if pref in ('mps', 'auto') and 'CoreMLExecutionProvider' in available:
+        if (pref in ('mps', 'auto') and use_coreml
+                and 'CoreMLExecutionProvider' in available):
             ordered.append('CoreMLExecutionProvider')
         # Always include CPU as a fallback
         if 'CPUExecutionProvider' not in ordered:
             ordered.append('CPUExecutionProvider')
+
+        if (pref in ('mps', 'auto') and not use_coreml
+                and 'CoreMLExecutionProvider' in available):
+            self.logger.info(
+                "CoreMLExecutionProvider is available but disabled by "
+                "default (incompatible with YOLOv8 dynamic-batch graphs). "
+                "Pass --onnx-coreml to opt in."
+            )
+
         return ordered
 
     def _ensure_onnx_model(self):

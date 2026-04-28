@@ -289,6 +289,14 @@ def main():
         help='Disable per-stage profiler (default: enabled)'
     )
     parser.add_argument(
+        '--onnx-coreml',
+        action='store_true',
+        help='Opt into CoreMLExecutionProvider for ONNX Runtime on Apple '
+             'Silicon. Off by default because CoreML NN backend is '
+             'incompatible with YOLOv8 dynamic-batch graphs. CPU is the '
+             'safe fallback.'
+    )
+    parser.add_argument(
         '--run-experiments',
         type=str,
         default='none',
@@ -309,6 +317,7 @@ def main():
     config['use_fp16'] = bool(args.fp16)
     config['use_gpu_preprocess'] = bool(args.gpu_preprocess)
     config['enable_detailed_profiling'] = not args.no_detailed_profiling
+    config['onnx_use_coreml'] = bool(args.onnx_coreml)
     
     if args.webcam:
         config['num_cameras'] = 1
