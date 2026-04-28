@@ -127,6 +127,115 @@ def _read_json_safe(path: Path) -> dict[str, Any]:
         return {}
 
 
+def _synthesize_experiments_from_per_run(per_run: dict[str, Any]) -> dict[str, Any]:
+    """Derive the experiments.E1-E7 structure from per_run summaries.
+
+    `per_run` is keyed by the file stem of each per-experiment summary
+    (e.g. 'e6_onnxruntime_summary'). The dashboard renders charts from
+    `experiments.E1.runs`, `experiments.E2.runs`, etc. — the same shape
+    that experiment_metadata.json produces.
+
+    We synthesize this structure here so that:
+      * Re-running a single experiment (e.g. `--run-experiments e6`)
+        properly updates the dashboard, even though that path doesn't
+        regenerate experiment_metadata.json.
+      * Existing submissions in the DB pick up the latest per_run data
+        without needing a re-upload.
+    """
+    if not per_run:
+        return {}
+
+    def _fps(summary):
+        return ((summary or {}).get('pipeline') or {}).get('overall_fps')
+
+    def _lat(summary):
+        return ((summary or {}).get('pipeline') or {}).get('avg_latency_ms')
+
+    out: dict[str, Any] = {}
+
+    # E1: gpu vs cpu
+    e1_runs = []
+    for label in ('gpu', 'cpu'):
+        s = per_run.get(f'e1_{label}_summary')
+        if s:
+            e1_runs.append({
+                'label': label,
+                'overall_fps': _fps(s),
+                'avg_latency_ms': _lat(s),
+            })
+    if e1_runs:
+        out['E1'] = {'runs': e1_runs}
+
+    # E2: batch sizes
+    e2_runs = []
+    for bs in (1, 2, 4, 8, 16):
+        s = per_run.get(f'e2_batch_{bs}_summary')
+        if s:
+            e2_runs.append({
+                'batch_size': bs,
+                'fps': _fps(s),
+                'latency_ms': _lat(s),
+            })
+    if e2_runs:
+        out['E2'] = {'runs': e2_runs}
+
+    # E3: stream counts
+    e3_runs = []
+    for n in (1, 2, 4, 8):
+        s = per_run.get(f'e3_streams_{n}_summary')
+        if s:
+            e3_runs.append({
+                'streams': n,
+                'fps': _fps(s),
+                'latency_ms': _lat(s),
+            })
+    if e3_runs:
+        out['E3'] = {'runs': e3_runs}
+
+    # E5: model variants
+    e5_runs = []
+    for variant in ('yolov8n', 'yolov8s', 'yolov8m', 'yolov8l', 'yolov8x'):
+        s = per_run.get(f'e5_{variant}_summary')
+        if s:
+            detections = ((s or {}).get('detector') or {}).get('total_detections')
+            e5_runs.append({
+                'model': f'{variant}.pt',
+                'fps': _fps(s),
+                'latency_ms': _lat(s),
+                'total_detections': detections,
+            })
+    if e5_runs:
+        out['E5'] = {'runs': e5_runs}
+
+    # E6: inference engines
+    e6_runs = []
+    for label in ('pytorch_fp32', 'pytorch_fp16', 'onnxruntime'):
+        s = per_run.get(f'e6_{label}_summary')
+        if s:
+            e6_runs.append({
+                'scenario': label,
+                'fps': _fps(s),
+                'latency_ms': _lat(s),
+            })
+    if e6_runs:
+        out['E6'] = {'runs': e6_runs}
+
+    # E7: GPU preprocessing scenarios
+    e7_runs = []
+    for label in ('cpu_preproc', 'gpu_preproc', 'gpu_preproc_fp16'):
+        s = per_run.get(f'e7_{label}_summary')
+        if s:
+            e7_runs.append({
+                'scenario': label,
+                'fps': _fps(s),
+                'latency_ms': _lat(s),
+            })
+    if e7_runs:
+        out['E7'] = {'runs': e7_runs}
+
+    return out
+
+
 # --------------------------------------------------------------------- #
 # FastAPI
 # --------------------------------------------------------------------- #
@@ -169,9 +278,23 @@ def get_submission(sub_id: str) -> dict[str, Any]:
 
     detail = _row_to_summary(row)
     detail['baseline'] = json.loads(row['baseline'] or '{}')
-    detail['experiments'] = json.loads(row['experiments'] or '{}')
+    stored_experiments = json.loads(row['experiments'] or '{}')
     detail['per_run'] = json.loads(row['per_run'] or '{}')
     detail['notes'] = row['notes']
+
+    # Always synthesize the experiments.E1-E7 chart structure from per_run.
+    # This is authoritative (per_run reflects the latest individual runs),
+    # whereas the stored `experiments` blob only refreshes when the full
+    # suite runs to completion. We merge synthesized data over the stored
+    # blob so that any extra metadata (e.g. e3 amdahl block) is preserved.
+    synthesized = _synthesize_experiments_from_per_run(detail['per_run'])
+    merged_experiments = dict(stored_experiments)
+    inner = dict((stored_experiments or {}).get('experiments') or {})
+    for key, value in synthesized.items():
+        inner[key] = value
+    if inner:
+        merged_experiments['experiments'] = inner
+    detail['experiments'] = merged_experiments
 
     # List available plot files
     plots_dir = _submission_dir(sub_id) / 'plots'
