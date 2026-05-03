@@ -128,7 +128,7 @@ class YOLODetector:
         dummy = np.random.randint(0, 255, (self.imgsz, self.imgsz, 3),
                                   dtype=np.uint8)
         t0 = time.time()
-        _ = self.model(dummy, verbose=False, device=self.device)
+        _ =  self._run_model(dummy)
         self.logger.info(f"Warmup complete in {time.time() - t0:.3f}s")
 
     # ------------------------------------------------------------------ #
