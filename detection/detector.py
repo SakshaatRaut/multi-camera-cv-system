@@ -182,6 +182,9 @@ class YOLODetector:
     # ------------------------------------------------------------------ #
     def _run_model(self, inputs):
         """Run the underlying YOLO model with FP16 autocast on CUDA."""
+        # Fix BCHW warning: lone (C,H,W) tensors need a batch dimension.
+        if torch.is_tensor(inputs) and inputs.dim() == 3:
+            inputs = inputs.unsqueeze(0)
         if self.use_fp16 and self.device == 'cuda':
             with torch.autocast(device_type='cuda', dtype=torch.float16):
                 return self.model(
