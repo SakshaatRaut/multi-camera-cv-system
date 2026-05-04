@@ -291,6 +291,12 @@ class ONNXDetector:
             frame_preds = preds[b]
             boxes_xywh = frame_preds[:, :4]
             class_scores = frame_preds[:, 4:]
+            # CUDAExecutionProvider may output raw pre-sigmoid logits instead of
+            # probabilities. Detect this by checking for out-of-[0,1] values and
+            # apply sigmoid so confidence thresholding works correctly.
+            if class_scores.size > 0 and (
+                    class_scores.max() > 1.0 or class_scores.min() < 0.0):
+                class_scores = 1.0 / (1.0 + np.exp(-class_scores))
             class_ids = np.argmax(class_scores, axis=1)
             confidences = class_scores[np.arange(len(class_ids)), class_ids]
 
