@@ -30,6 +30,14 @@ import numpy as np
 from utils.logger import get_logger
 
 
+def _build_color_palette(n: int = 80) -> list:
+    rng = np.random.default_rng(seed=0)
+    return [tuple(map(int, c)) for c in rng.integers(0, 255, (n, 3))]
+
+
+_COLOR_PALETTE: list = _build_color_palette()
+
+
 class ONNXDetector:
     """ONNX Runtime YOLOv8 detector."""
 
@@ -174,11 +182,12 @@ class ONNXDetector:
         except Exception:  # pragma: no cover
             return [str(i) for i in range(80)]
 
-    def _warmup(self):
+    def _warmup(self, runs: int = 3):
         dummy = np.random.rand(1, 3, self.imgsz, self.imgsz).astype(np.float32)
         t0 = time.time()
-        _ = self._session.run(None, {self._input_name: dummy})
-        self.logger.info(f"ONNX warmup: {time.time() - t0:.3f}s")
+        for _ in range(runs):
+            self._session.run(None, {self._input_name: dummy})
+        self.logger.info(f"ONNX warmup: {time.time() - t0:.3f}s ({runs} runs)")
 
     # ------------------------------------------------------------------ #
     # Preprocessing (CPU; ONNX Runtime handles device placement)
@@ -295,11 +304,9 @@ class ONNXDetector:
             confidences = confidences[keep]
             boxes_xyxy = self._xywh_to_xyxy(boxes_xywh)
 
-            # OpenCV NMS expects (x, y, w, h)
-            nms_boxes = boxes_xywh.tolist()
-            nms_scores = confidences.tolist()
+            # cv2.dnn.NMSBoxes accepts numpy arrays directly (no .tolist() needed)
             idx = cv2.dnn.NMSBoxes(
-                nms_boxes, nms_scores,
+                boxes_xywh, confidences,
                 self.confidence_threshold, self.iou_threshold,
             )
             if isinstance(idx, (list, tuple)):
@@ -352,8 +359,7 @@ class ONNXDetector:
         output = frame.copy()
         for det in detections:
             x1, y1, x2, y2 = map(int, det['bbox'])
-            np.random.seed(det['class_id'])
-            color = tuple(map(int, np.random.randint(0, 255, 3)))
+            color = _COLOR_PALETTE[det['class_id'] % len(_COLOR_PALETTE)]
             cv2.rectangle(output, (x1, y1), (x2, y2), color, 2)
             text = f"{det['class_name']}: {det['confidence']:.2f}"
             cv2.putText(output, text, (x1, max(y1 - 5, 15)),
