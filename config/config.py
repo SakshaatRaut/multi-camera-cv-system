@@ -22,12 +22,15 @@ SYSTEM_CONFIG = {
     'model_name': 'yolov8n.pt',
     'confidence_threshold': 0.25,
     'iou_threshold': 0.45,
-    'device': 'cuda',  # 'cuda' or 'cpu'
+    'device': 'cuda',  # 'cuda', 'mps', or 'cpu'
     'batch_size': 4,
-    
+    'imgsz': 640,
+    'use_fp16': False,          # FP16 mixed precision (CUDA only)
+    'use_gpu_preprocess': False, # GPU-side resize+normalize (CUDA/MPS)
+
     # Pipeline Settings
     'num_workers': 4,
-    'batch_timeout': 0.05,  # seconds
+    'batch_timeout': 0.033,  # seconds (~1 frame @ 30 fps; was 0.05)
     
     # Profiling Settings
     'enable_profiling': True,
