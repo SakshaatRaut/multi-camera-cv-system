@@ -13,7 +13,7 @@ just an aggregate FPS.
 import time
 import queue
 import threading
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from profiling.detailed_profiler import DetailedProfiler
 from utils.logger import get_logger
@@ -52,7 +52,7 @@ class PipelineManager:
             'frames_processed': 0,
             'total_detections': 0,
             'total_latency': 0.0,
-            'latency_samples': [],   # bounded - see _record_latency
+            'latency_samples': deque(maxlen=5000),
         })
         self.total_frames = 0
         self.start_time = None
@@ -300,11 +300,7 @@ class PipelineManager:
         cam_stats['total_detections'] += result.get('num_detections', 0)
         cam_stats['total_latency'] += latency
 
-        # Bounded latency-sample buffer for per-camera percentiles
-        samples = cam_stats['latency_samples']
-        samples.append(latency)
-        if len(samples) > 5000:
-            del samples[: len(samples) // 2]
+        cam_stats['latency_samples'].append(latency)
 
         self.total_frames += 1
 
