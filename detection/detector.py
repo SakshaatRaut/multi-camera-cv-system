@@ -26,6 +26,14 @@ from ultralytics import YOLO
 from utils.logger import get_logger
 
 
+def _build_color_palette(n: int = 80) -> list:
+    rng = np.random.default_rng(seed=0)
+    return [tuple(map(int, c)) for c in rng.integers(0, 255, (n, 3))]
+
+
+_COLOR_PALETTE: list = _build_color_palette()
+
+
 class YOLODetector:
     """YOLOv8 detector with CUDA / MPS / CPU support."""
 
@@ -123,13 +131,20 @@ class YOLODetector:
         )
         self._warmup()
 
-    def _warmup(self):
-        self.logger.info("Warming up model...")
-        dummy = np.random.randint(0, 255, (self.imgsz, self.imgsz, 3),
-                                  dtype=np.uint8)
+    def _warmup(self, runs: int = 3):
+        self.logger.info(f"Warming up model ({runs} runs)...")
+        dummy_np = np.random.randint(0, 255, (self.imgsz, self.imgsz, 3),
+                                     dtype=np.uint8)
         t0 = time.time()
-        _ = self.model(dummy, verbose=False, device=self.device)
-        self.logger.info(f"Warmup complete in {time.time() - t0:.3f}s")
+        for _ in range(runs):
+            if self.use_gpu_preprocess:
+                inp = self.preprocess_batch([dummy_np])
+            else:
+                inp = dummy_np
+            _ = self._run_model(inp)
+        if self.device == 'cuda':
+            torch.cuda.synchronize()
+        self.logger.info(f"Warmup complete in {time.time() - t0:.3f}s ({runs} runs)")
 
     # ------------------------------------------------------------------ #
     # Preprocessing
@@ -203,8 +218,12 @@ class YOLODetector:
         )
 
     def detect_single(self, frame):
+        if self.device == 'cuda':
+            torch.cuda.synchronize()
         t0 = time.time()
         results = self._run_model(frame)[0]
+        if self.device == 'cuda':
+            torch.cuda.synchronize()
         elapsed = time.time() - t0
 
         detections = self._extract_detections(results)
@@ -226,8 +245,12 @@ class YOLODetector:
         if n == 0:
             return []
 
+        if self.device == 'cuda':
+            torch.cuda.synchronize()
         t0 = time.time()
         results = self._run_model(frames)
+        if self.device == 'cuda':
+            torch.cuda.synchronize()
         elapsed = time.time() - t0
 
         batch_results = []
@@ -281,8 +304,7 @@ class YOLODetector:
 
     @staticmethod
     def _get_color(class_id):
-        np.random.seed(class_id)
-        return tuple(map(int, np.random.randint(0, 255, 3)))
+        return _COLOR_PALETTE[class_id % len(_COLOR_PALETTE)]
 
     # ------------------------------------------------------------------ #
     # Stats
