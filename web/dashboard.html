@@ -4,134 +4,340 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Multi-Camera CV Benchmark Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #161a22;
-    --panel-2: #1c2230;
-    --border: #262c3a;
-    --text: #e6e8ef;
-    --muted: #8a93a6;
-    --accent: #5aa7ff;
-    --accent-2: #7ee787;
-    --warn: #ffb454;
-    --bad:  #ff7b72;
+    --bg:           #0d1117;
+    --panel:        #161b24;
+    --panel-2:      #1c2333;
+    --panel-hover:  #1f2937;
+    --border:       #21282f;
+    --border-sub:   #191f28;
+    --text:         #e6edf3;
+    --muted:        #7d8590;
+    --muted-2:      #586069;
+    --accent:       #388bfd;
+    --green:        #3fb950;
+    --green-sub:    rgba(63,185,80,0.1);
+    --warn:         #d29922;
+    --warn-sub:     rgba(210,153,34,0.1);
+    --bad:          #f85149;
+    --purple:       #a371f7;
+    --shadow-sm:    0 1px 3px rgba(0,0,0,0.35);
+    --shadow-md:    0 4px 18px rgba(0,0,0,0.45);
+    --r:  10px;
+    --rs: 6px;
+    --rl: 14px;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                             Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--text);
-    padding: 0 24px 64px;
+    padding: 0 28px 72px; min-height: 100vh;
+    font-size: 14px; line-height: 1.5;
   }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+  /* ── Header ── */
   header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    padding: 24px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
   }
-  header h1 { margin: 0; font-size: 22px; }
-  header .sub { color: var(--muted); font-size: 13px; }
-  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
-  @media (min-width: 960px) { .grid.two { grid-template-columns: 3fr 2fr; } }
-  .panel {
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-icon {
+    width: 42px; height: 42px; flex-shrink: 0;
+    background: linear-gradient(135deg, #1a3a6e 0%, #0d1f44 100%);
+    border: 1px solid #2a4a8a; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: var(--shadow-sm);
+  }
+  header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
+  header .sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 18px;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 12px; color: var(--muted);
   }
-  .panel h2 { font-size: 15px; margin: 0 0 12px; letter-spacing: 0.02em;
-              text-transform: uppercase; color: var(--muted); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px;
-           border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 500; }
-  tbody tr:hover { background: var(--panel-2); cursor: pointer; }
-  tbody tr.selected { background: var(--panel-2);
-                      outline: 1px solid var(--accent); }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px;
-          font-size: 11px; background: var(--panel-2);
-          border: 1px solid var(--border); color: var(--muted); }
-  .pill.cuda { color: #7ee787; border-color: #2d5c33; }
-  .pill.mps  { color: #5aa7ff; border-color: #2a4470; }
-  .pill.cpu  { color: #ffb454; border-color: #6b4a1f; }
-  .muted { color: var(--muted); }
-  .kv { display: grid; grid-template-columns: max-content 1fr;
-        column-gap: 14px; row-gap: 4px; font-size: 13px; }
-  .kv dt { color: var(--muted); }
-  .chart-wrap { position: relative; height: 340px; }
-  .chart-wrap.short { height: 220px; }
-  .row { display: flex; flex-wrap: wrap; gap: 16px; }
-  .row > * { flex: 1 1 320px; min-width: 0; }
-  img.plot { max-width: 100%; border: 1px solid var(--border);
-             border-radius: 6px; background: #fff; }
-  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border);
-          margin-bottom: 14px; }
-  .tabs button {
-    background: transparent; border: 0; color: var(--muted);
-    padding: 8px 14px; cursor: pointer; font-size: 13px;
-    border-bottom: 2px solid transparent;
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: var(--muted-2); transition: background 0.3s;
   }
-  .tabs button.active { color: var(--text);
-                        border-bottom-color: var(--accent); }
-  .tab-body { display: none; }
-  .tab-body.active { display: block; }
-  .empty { text-align: center; color: var(--muted); padding: 30px 0; }
+  .pulse-dot.live {
+    background: var(--green);
+    animation: pulse-anim 2.4s ease-in-out infinite;
+  }
+  .pulse-dot.error { background: var(--bad); }
+  @keyframes pulse-anim {
+    0%   { box-shadow: 0 0 0 0   rgba(63,185,80,0.5); }
+    70%  { box-shadow: 0 0 0 7px rgba(63,185,80,0); }
+    100% { box-shadow: 0 0 0 0   rgba(63,185,80,0); }
+  }
   button.btn {
     background: var(--panel-2); color: var(--text);
-    border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px;
-    cursor: pointer; font-size: 12px;
+    border: 1px solid var(--border); padding: 7px 14px;
+    border-radius: var(--rs); cursor: pointer;
+    font-size: 13px; font-family: inherit; font-weight: 500;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex; align-items: center; gap: 6px;
   }
-  button.btn:hover { border-color: var(--accent); }
-  code.inline { background: var(--panel-2); border: 1px solid var(--border);
-                padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  button.btn:hover { border-color: var(--accent); background: rgba(56,139,253,0.06); }
+  button.btn:active { transform: translateY(1px); }
+
+  /* ── Stat cards ── */
+  .stat-cards {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) { .stat-cards { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 500px) { .stat-cards { grid-template-columns: 1fr; } }
+  .stat-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px 18px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; border-radius: var(--r) var(--r) 0 0;
+  }
+  .stat-card.blue::before  { background: var(--accent); }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.warn::before  { background: var(--warn); }
+  .stat-card.purple::before{ background: var(--purple); }
+  .stat-card:hover { border-color: var(--muted-2); box-shadow: var(--shadow-md); }
+  .stat-label {
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+  .stat-value.blue   { color: #79c0ff; }
+  .stat-value.green  { color: #56d364; }
+  .stat-value.warn   { color: #e3b341; }
+  .stat-value.purple { color: #bc8cff; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 7px; }
+
+  /* ── Layout ── */
+  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .grid.two { grid-template-columns: 3fr 2fr; } }
+  .mt { margin-top: 20px; }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--rl); padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 7px;
+  }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 8px 12px;
+    color: var(--muted); font-weight: 500; font-size: 11px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border-sub); vertical-align: middle; }
+  tbody tr { transition: background 0.1s; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--panel-hover); cursor: pointer; }
+  tbody tr.selected {
+    background: rgba(56,139,253,0.07);
+    outline: 1px solid rgba(56,139,253,0.5);
+    outline-offset: -1px;
+  }
+
+  /* ── Rank medal ── */
+  .rank {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .rank-1 { background: #FFD700; color: #5a4000; }
+  .rank-2 { background: #C0C0C0; color: #333; }
+  .rank-3 { background: #cd7f32; color: #fff; }
+  .rank-n { background: transparent; color: var(--muted); font-weight: 500; font-size: 12px; }
+
+  /* ── Pills ── */
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; border: 1px solid var(--border);
+    color: var(--muted); background: var(--panel-2);
+    letter-spacing: 0.02em;
+  }
+  .pill.cuda   { color: #56d364; border-color: rgba(86,211,100,0.3); background: var(--green-sub); }
+  .pill.mps    { color: #79c0ff; border-color: rgba(121,192,255,0.3); background: rgba(56,139,253,0.1); }
+  .pill.cpu    { color: #e3b341; border-color: rgba(227,179,65,0.3); background: var(--warn-sub); }
+  .pill.suite  { color: #bc8cff; border-color: rgba(163,113,247,0.3); background: rgba(163,113,247,0.1); }
+  .muted { color: var(--muted); }
+
+  /* ── KV list ── */
+  .kv { display: grid; grid-template-columns: max-content 1fr; column-gap: 16px; row-gap: 7px; font-size: 13px; }
+  .kv dt { color: var(--muted); font-size: 12px; }
+  .kv dd { font-weight: 500; }
+
+  /* ── Charts ── */
+  .chart-wrap { position: relative; height: 320px; }
+
+  /* ── Row ── */
+  .row { display: flex; flex-wrap: wrap; gap: 16px; }
+  .row > * { flex: 1 1 300px; min-width: 0; }
+
+  /* ── Plots ── */
+  img.plot { max-width: 100%; border: 1px solid var(--border); border-radius: var(--rs); background: #fff; }
+
+  /* ── Tabs (pill style) ── */
+  .tabs {
+    display: flex; gap: 3px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 4px; border-radius: 9px; width: fit-content;
+    margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .tabs button {
+    background: transparent; border: 0;
+    color: var(--muted); padding: 6px 14px;
+    cursor: pointer; font-size: 12px; font-family: inherit; font-weight: 500;
+    border-radius: 6px; transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+  }
+  .tabs button.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
+  .tabs button:not(.active):hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .tab-body { display: none; }
+  .tab-body.active { display: block; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; color: var(--muted); padding: 36px 0; font-size: 13px; line-height: 2; }
+
+  /* ── Code inline ── */
+  code.inline {
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 2px 6px; border-radius: 4px; font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    color: #79c0ff;
+  }
+
+  /* ── Detail cards ── */
+  .detail-section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--muted); margin: 18px 0 8px;
+  }
+  .detail-section-label:first-child { margin-top: 0; }
+  .info-card {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--rs); padding: 14px 16px;
+  }
+  .plot-label { font-size: 10px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1>Multi-Camera CV Benchmark &mdash; Leaderboard</h1>
-    <div class="sub">CUDA vs Apple Silicon; FPS, latency, and experiment-suite comparison.</div>
+  <div class="header-left">
+    <div class="header-icon">📷</div>
+    <div>
+      <h1>Multi-Camera CV Benchmark</h1>
+      <div class="sub">CUDA vs Apple Silicon &mdash; FPS, latency, and experiment-suite comparison</div>
+    </div>
   </div>
-  <div>
-    <button class="btn" onclick="refresh()">Refresh</button>
-    <span id="status" class="muted" style="margin-left: 10px;"></span>
+  <div class="header-right">
+    <div class="status-pill">
+      <div class="pulse-dot" id="pulseDot"></div>
+      <span id="status">—</span>
+    </div>
+    <button class="btn" onclick="refresh()">↻ Refresh</button>
   </div>
 </header>
 
+<!-- ── Stat cards ── -->
+<div class="stat-cards">
+  <div class="stat-card blue">
+    <div class="stat-label">Total Devices</div>
+    <div class="stat-value blue" id="sc-devices">—</div>
+    <div class="stat-sub">submitted</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">Best FPS</div>
+    <div class="stat-value green" id="sc-fps">—</div>
+    <div class="stat-sub" id="sc-fps-device">&nbsp;</div>
+  </div>
+  <div class="stat-card warn">
+    <div class="stat-label">Best Latency</div>
+    <div class="stat-value warn" id="sc-lat">—</div>
+    <div class="stat-sub" id="sc-lat-device">&nbsp;</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-label">Full Suites</div>
+    <div class="stat-value purple" id="sc-suites">—</div>
+    <div class="stat-sub">E1 – E7 complete</div>
+  </div>
+</div>
+
 <div class="grid two">
   <div class="panel">
-    <h2>Devices submitted</h2>
+    <div class="panel-header">
+      <h2>🏆 &nbsp;Devices submitted</h2>
+    </div>
     <table>
       <thead>
         <tr>
-          <th>Device</th><th>Accelerator</th><th>FPS</th>
-          <th>Latency</th><th>When</th>
+          <th style="width:36px;">#</th>
+          <th>Device</th><th>Accelerator</th>
+          <th>FPS</th><th>Latency</th><th>When</th>
         </tr>
       </thead>
       <tbody id="deviceTable"></tbody>
     </table>
     <div id="emptyState" class="empty" style="display:none;">
-      No submissions yet. Run <code class="inline">python web/agent.py --server http://THIS_HOST:8000 --device-label "My Laptop"</code>
+      No submissions yet.<br>
+      Run: <code class="inline">python web/agent.py --server http://HOST:8000 --device-label "My Laptop"</code>
     </div>
   </div>
 
   <div class="panel">
-    <h2>Headline FPS (all devices)</h2>
+    <div class="panel-header">
+      <h2>📊 &nbsp;Headline FPS — all devices</h2>
+    </div>
     <div class="chart-wrap"><canvas id="fpsChart"></canvas></div>
   </div>
 </div>
 
-<div class="grid" style="margin-top: 20px;">
+<div class="grid mt">
   <div class="panel">
-    <h2>Latency percentiles &mdash; per device</h2>
+    <div class="panel-header">
+      <h2>⏱ &nbsp;Latency percentiles — per device</h2>
+    </div>
     <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
   </div>
 </div>
 
-<div class="grid" style="margin-top: 20px;">
+<div class="grid mt">
   <div class="panel">
-    <h2>Experiment-suite comparison</h2>
-    <div class="muted" style="font-size:12px; margin-bottom:10px;">
-      Only devices that submitted a full suite (E1&ndash;E7) appear below.
+    <div class="panel-header">
+      <h2>🔬 &nbsp;Experiment-suite comparison</h2>
+    </div>
+    <div class="muted" style="font-size:12px; margin-bottom:14px;">
+      Only devices that submitted a full suite (E1–E7) appear below.
     </div>
     <div class="tabs" id="expTabs">
       <button class="active" data-tab="e1">E1 CPU vs GPU</button>
@@ -162,17 +368,21 @@
   </div>
 </div>
 
-<div class="grid" style="margin-top: 20px;">
+<div class="grid mt">
   <div class="panel">
-    <h2>Device detail</h2>
-    <div id="detailBody" class="muted">Click a device in the table to see its run details and plots.</div>
+    <div class="panel-header">
+      <h2>🖥 &nbsp;Device detail</h2>
+    </div>
+    <div id="detailBody" class="muted" style="padding: 20px 0; text-align: center;">
+      Click a device in the table above to see its full run details and plots.
+    </div>
   </div>
 </div>
 
 <script>
-// --------------------------------------------------------------- //
-// Data + state
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────
 const state = { submissions: [], selectedId: null, details: {} };
 const charts = {};
 
@@ -183,21 +393,21 @@ async function fetchJSON(url) {
 }
 
 async function refresh() {
-  setStatus('Loading…');
+  setStatus('loading', 'Loading…');
   try {
     const subs = await fetchJSON('/api/submissions');
     state.submissions = subs;
+    renderStatCards();
     renderTable();
     renderFpsChart();
     renderLatencyChart();
-    // Fetch full detail for devices with experiments (for overlay plots)
     const detailFetches = subs.filter(s => s.has_experiments)
                               .map(s => ensureDetail(s.id));
     await Promise.all(detailFetches);
     renderExperimentCharts();
-    setStatus(`Loaded ${subs.length} submission(s)`);
+    setStatus('live', `${subs.length} submission${subs.length !== 1 ? 's' : ''}`);
   } catch (e) {
-    setStatus('Error: ' + e.message);
+    setStatus('error', 'Error: ' + e.message);
   }
 }
 
@@ -208,11 +418,49 @@ async function ensureDetail(id) {
   return d;
 }
 
-function setStatus(text) { document.getElementById('status').textContent = text; }
+function setStatus(mode, text) {
+  document.getElementById('status').textContent = text;
+  const dot = document.getElementById('pulseDot');
+  dot.className = 'pulse-dot' + (mode === 'live' ? ' live' : mode === 'error' ? ' error' : '');
+}
 
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
+// Stat cards
+// ─────────────────────────────────────────────────────────────────
+function renderStatCards() {
+  const subs = state.submissions;
+  document.getElementById('sc-devices').textContent = subs.length || '0';
+  document.getElementById('sc-suites').textContent =
+    subs.filter(s => s.has_experiments).length || '0';
+
+  const withFps = subs.filter(s => s.headline && s.headline.overall_fps != null);
+  if (withFps.length) {
+    const best = withFps.reduce((a, b) =>
+      b.headline.overall_fps > a.headline.overall_fps ? b : a);
+    document.getElementById('sc-fps').textContent =
+      Number(best.headline.overall_fps).toFixed(1);
+    document.getElementById('sc-fps-device').textContent = best.device_label;
+  } else {
+    document.getElementById('sc-fps').textContent = '—';
+    document.getElementById('sc-fps-device').textContent = ' ';
+  }
+
+  const withLat = subs.filter(s => s.headline && s.headline.avg_latency_ms != null);
+  if (withLat.length) {
+    const best = withLat.reduce((a, b) =>
+      b.headline.avg_latency_ms < a.headline.avg_latency_ms ? b : a);
+    document.getElementById('sc-lat').textContent =
+      Number(best.headline.avg_latency_ms).toFixed(1) + ' ms';
+    document.getElementById('sc-lat-device').textContent = best.device_label;
+  } else {
+    document.getElementById('sc-lat').textContent = '—';
+    document.getElementById('sc-lat-device').textContent = ' ';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Table
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
 function renderTable() {
   const tb = document.getElementById('deviceTable');
   const empty = document.getElementById('emptyState');
@@ -220,7 +468,14 @@ function renderTable() {
   if (!state.submissions.length) { empty.style.display = 'block'; return; }
   empty.style.display = 'none';
 
-  for (const s of state.submissions) {
+  const sorted = [...state.submissions].sort((a, b) => {
+    const fa = a.headline && a.headline.overall_fps || 0;
+    const fb = b.headline && b.headline.overall_fps || 0;
+    return fb - fa;
+  });
+
+  sorted.forEach((s, idx) => {
+    const rank = idx + 1;
     const tr = document.createElement('tr');
     tr.dataset.id = s.id;
     if (s.id === state.selectedId) tr.classList.add('selected');
@@ -230,109 +485,159 @@ function renderTable() {
     const fps = s.headline && s.headline.overall_fps;
     const lat = s.headline && s.headline.avg_latency_ms;
 
+    const rankHtml = rank <= 3
+      ? `<span class="rank rank-${rank}">${rank}</span>`
+      : `<span class="rank rank-n">${rank}</span>`;
+
     tr.innerHTML = `
-      <td>${escapeHtml(s.device_label)}
-          ${s.has_experiments ? '<span class="pill">E1-E7</span>' : ''}</td>
-      <td><span class="pill ${acc}">${acc}</span>
-          ${s.hardware && s.hardware.gpu_name ? '<div class="muted" style="font-size:11px;">' + escapeHtml(s.hardware.gpu_name) + '</div>' : ''}
+      <td>${rankHtml}</td>
+      <td>
+        ${escapeHtml(s.device_label)}
+        ${s.has_experiments ? ' <span class="pill suite">E1–E7</span>' : ''}
       </td>
-      <td>${fps !== null && fps !== undefined ? Number(fps).toFixed(2) : '—'}</td>
-      <td>${lat !== null && lat !== undefined ? Number(lat).toFixed(1) + ' ms' : '—'}</td>
+      <td>
+        <span class="pill ${acc}">${acc}</span>
+        ${s.hardware && s.hardware.gpu_name
+          ? `<div class="muted" style="font-size:11px;margin-top:3px;">${escapeHtml(s.hardware.gpu_name)}</div>`
+          : ''}
+      </td>
+      <td style="font-weight:600; color:#56d364;">
+        ${fps != null ? Number(fps).toFixed(2) : '—'}
+      </td>
+      <td style="color:#e3b341;">
+        ${lat != null ? Number(lat).toFixed(1) + ' ms' : '—'}
+      </td>
       <td class="muted">${formatWhen(s.submitted_at)}</td>
     `;
     tr.onclick = () => selectDevice(s.id);
     tb.appendChild(tr);
-  }
+  });
 }
 
 function selectDevice(id) {
   state.selectedId = id;
-  document.querySelectorAll('#deviceTable tr').forEach(tr => {
-    tr.classList.toggle('selected', tr.dataset.id === id);
-  });
+  document.querySelectorAll('#deviceTable tr').forEach(tr =>
+    tr.classList.toggle('selected', tr.dataset.id === id));
   renderDetail(id);
 }
 
 async function renderDetail(id) {
   const body = document.getElementById('detailBody');
-  body.innerHTML = 'Loading…';
+  body.innerHTML = '<div class="muted" style="padding:20px 0;text-align:center;">Loading…</div>';
   try {
     const d = await ensureDetail(id);
-    const hw = d.hardware || {};
+    const hw  = d.hardware || {};
     const cfg = (d.baseline && d.baseline.config) || {};
     const pl  = (d.baseline && d.baseline.pipeline) || {};
 
-    const plotsHtml = (d.plots || []).map(name =>
-      `<div><div class="muted" style="font-size:11px;">${escapeHtml(name)}</div>
-            <img class="plot" src="/api/submissions/${id}/plot/${encodeURIComponent(name)}" /></div>`
-    ).join('');
+    const plotsHtml = (d.plots || []).map(name => `
+      <div>
+        <div class="plot-label">${escapeHtml(name)}</div>
+        <img class="plot" src="/api/submissions/${id}/plot/${encodeURIComponent(name)}" />
+      </div>`).join('');
 
     body.innerHTML = `
-      <div class="row">
-        <div>
-          <dl class="kv">
-            <dt>Label</dt><dd>${escapeHtml(d.device_label)}</dd>
-            <dt>Submitted</dt><dd>${formatWhen(d.submitted_at)}</dd>
-            <dt>Git commit</dt><dd><code class="inline">${escapeHtml(d.git_commit || '—')}</code></dd>
-            <dt>Platform</dt><dd>${escapeHtml(hw.platform || '-')}</dd>
-            <dt>Accelerator</dt><dd>${escapeHtml(hw.accelerator || '-')}
-               ${hw.gpu_name ? ' — ' + escapeHtml(hw.gpu_name) : ''}</dd>
-            <dt>CPU cores</dt><dd>${hw.cpu_count_logical || '-'} logical /
-                ${hw.cpu_count_physical || '-'} physical</dd>
-            <dt>RAM</dt><dd>${hw.ram_gb ? hw.ram_gb + ' GB' : '-'}</dd>
-            <dt>torch</dt><dd>${escapeHtml(hw.torch || '-')}</dd>
-          </dl>
-        </div>
-        <div>
-          <dl class="kv">
-            <dt>Device mode</dt><dd>${escapeHtml(cfg.device || '-')}</dd>
-            <dt>Model</dt><dd>${escapeHtml(cfg.model_name || '-')}</dd>
-            <dt>Cameras</dt><dd>${cfg.num_cameras || '-'}</dd>
-            <dt>Batch</dt><dd>${cfg.batch_size || '-'}</dd>
-            <dt>Backend</dt><dd>${escapeHtml(cfg.backend || '-')}</dd>
-            <dt>FP16</dt><dd>${cfg.use_fp16 ? 'yes' : 'no'}</dd>
-            <dt>GPU preproc</dt><dd>${cfg.use_gpu_preprocess ? 'yes' : 'no'}</dd>
-            <dt>Overall FPS</dt><dd>${fmt(pl.overall_fps, 2)}</dd>
-            <dt>Avg latency</dt><dd>${fmt(pl.avg_latency_ms, 1)} ms</dd>
-            <dt>Frames</dt><dd>${pl.total_frames || '-'}</dd>
-            <dt>Detections</dt><dd>${(d.baseline && d.baseline.detector &&
-                 d.baseline.detector.total_detections) || '-'}</dd>
-          </dl>
-        </div>
+      <div class="detail-section-label">Hardware</div>
+      <div class="info-card">
+        <dl class="kv">
+          <dt>Label</dt>      <dd>${escapeHtml(d.device_label)}</dd>
+          <dt>Submitted</dt>  <dd>${formatWhen(d.submitted_at)}</dd>
+          <dt>Git commit</dt> <dd><code class="inline">${escapeHtml(d.git_commit || '—')}</code></dd>
+          <dt>Platform</dt>   <dd>${escapeHtml(hw.platform || '-')}</dd>
+          <dt>Accelerator</dt><dd>${escapeHtml(hw.accelerator || '-')}${hw.gpu_name ? ' — ' + escapeHtml(hw.gpu_name) : ''}</dd>
+          <dt>CPU cores</dt>  <dd>${hw.cpu_count_logical || '-'} logical / ${hw.cpu_count_physical || '-'} physical</dd>
+          <dt>RAM</dt>        <dd>${hw.ram_gb ? hw.ram_gb + ' GB' : '-'}</dd>
+          <dt>Torch</dt>      <dd>${escapeHtml(hw.torch || '-')}</dd>
+        </dl>
       </div>
 
-      ${d.notes ? '<p class="muted" style="margin-top:14px;">' +
-          escapeHtml(d.notes) + '</p>' : ''}
+      <div class="detail-section-label" style="margin-top:16px;">Baseline run</div>
+      <div class="info-card">
+        <dl class="kv">
+          <dt>Device mode</dt>   <dd>${escapeHtml(cfg.device || '-')}</dd>
+          <dt>Model</dt>         <dd>${escapeHtml(cfg.model_name || '-')}</dd>
+          <dt>Cameras</dt>       <dd>${cfg.num_cameras || '-'}</dd>
+          <dt>Batch</dt>         <dd>${cfg.batch_size || '-'}</dd>
+          <dt>Backend</dt>       <dd>${escapeHtml(cfg.backend || '-')}</dd>
+          <dt>FP16</dt>          <dd>${cfg.use_fp16 ? 'yes' : 'no'}</dd>
+          <dt>GPU preproc</dt>   <dd>${cfg.use_gpu_preprocess ? 'yes' : 'no'}</dd>
+          <dt>Overall FPS</dt>   <dd style="color:#56d364;font-weight:700;">${fmt(pl.overall_fps, 2)}</dd>
+          <dt>Avg latency</dt>   <dd style="color:#e3b341;font-weight:700;">${fmt(pl.avg_latency_ms, 1)} ms</dd>
+          <dt>Frames</dt>        <dd>${pl.total_frames || '-'}</dd>
+          <dt>Detections</dt>    <dd>${(d.baseline && d.baseline.detector && d.baseline.detector.total_detections) || '-'}</dd>
+        </dl>
+      </div>
 
-      ${plotsHtml ? '<h3 style="font-size:13px; color:var(--muted); ' +
-         'letter-spacing:0.02em; text-transform:uppercase; margin-top:18px;">Plots</h3>' +
-         '<div class="row" style="margin-top:10px;">' + plotsHtml + '</div>'
-         : ''}
+      ${d.notes ? `<p class="muted" style="margin-top:14px;font-size:12px;">${escapeHtml(d.notes)}</p>` : ''}
+
+      ${plotsHtml ? `
+        <div class="detail-section-label" style="margin-top:16px;">Plots</div>
+        <div class="row" style="margin-top:0;">${plotsHtml}</div>
+      ` : ''}
     `;
   } catch (e) {
-    body.innerHTML = '<div class="empty">Error loading detail: ' +
-                     escapeHtml(e.message) + '</div>';
+    body.innerHTML = `<div class="empty">Error loading detail: ${escapeHtml(e.message)}</div>`;
   }
 }
 
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
 // Charts
-// --------------------------------------------------------------- //
-const PALETTE = ['#5aa7ff', '#7ee787', '#ffb454', '#ff7b72',
-                 '#d2a8ff', '#ffa657', '#79c0ff', '#a5d6a7'];
-
+// ─────────────────────────────────────────────────────────────────
+const PALETTE = [
+  '#388bfd', '#3fb950', '#d29922', '#f85149',
+  '#a371f7', '#fb8f44', '#79c0ff', '#56d364',
+];
 function colorFor(i) { return PALETTE[i % PALETTE.length]; }
+function destroyChart(key) { if (charts[key]) { charts[key].destroy(); charts[key] = null; } }
 
-function destroyChart(key) {
-  if (charts[key]) { charts[key].destroy(); charts[key] = null; }
+Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+Chart.defaults.color = '#7d8590';
+
+function barOpts(title) {
+  return {
+    maintainAspectRatio: false, responsive: true,
+    plugins: {
+      legend: {
+        labels: { color: '#e6edf3', boxWidth: 12, padding: 16, font: { size: 12 } },
+      },
+      title: {
+        display: !!title, text: title,
+        color: '#7d8590', font: { size: 12, weight: '500' }, padding: { bottom: 12 },
+      },
+      tooltip: {
+        backgroundColor: '#1c2333',
+        borderColor: '#21282f', borderWidth: 1,
+        titleColor: '#e6edf3', bodyColor: '#7d8590',
+        padding: 10, cornerRadius: 8,
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: '#7d8590', font: { size: 11 } },
+        grid: { color: 'rgba(33,40,47,0.8)', drawBorder: false },
+      },
+      y: {
+        ticks: { color: '#7d8590', font: { size: 11 } },
+        grid: { color: 'rgba(33,40,47,0.8)', drawBorder: false },
+        beginAtZero: true,
+      },
+    },
+    elements: {
+      bar: { borderRadius: 6, borderSkipped: false },
+    },
+  };
+}
+
+function lineOpts(title) {
+  const o = barOpts(title);
+  o.elements = { point: { radius: 5, hoverRadius: 7 } };
+  return o;
 }
 
 function renderFpsChart() {
   destroyChart('fps');
-  const rows = state.submissions.filter(
-    s => s.headline && s.headline.overall_fps != null);
-  const ctx = document.getElementById('fpsChart');
-  charts.fps = new Chart(ctx, {
+  const rows = state.submissions.filter(s => s.headline && s.headline.overall_fps != null);
+  charts.fps = new Chart(document.getElementById('fpsChart'), {
     type: 'bar',
     data: {
       labels: rows.map(s => s.device_label),
@@ -342,16 +647,14 @@ function renderFpsChart() {
         backgroundColor: rows.map((_, i) => colorFor(i)),
       }],
     },
-    options: barOpts('FPS (higher is better)'),
+    options: barOpts('FPS — higher is better'),
   });
 }
 
 function renderLatencyChart() {
   destroyChart('lat');
-  const rows = state.submissions.filter(
-    s => s.headline && s.headline.avg_latency_ms != null);
-  const ctx = document.getElementById('latencyChart');
-  charts.lat = new Chart(ctx, {
+  const rows = state.submissions.filter(s => s.headline && s.headline.avg_latency_ms != null);
+  charts.lat = new Chart(document.getElementById('latencyChart'), {
     type: 'bar',
     data: {
       labels: rows.map(s => s.device_label),
@@ -361,11 +664,10 @@ function renderLatencyChart() {
         backgroundColor: rows.map((_, i) => colorFor(i)),
       }],
     },
-    options: barOpts('Avg latency (ms, lower is better)'),
+    options: barOpts('Avg latency (ms) — lower is better'),
   });
 }
 
-// --- E1 CPU vs GPU: grouped bars per device
 function renderExperimentCharts() {
   const detailList = state.submissions
     .filter(s => s.has_experiments)
@@ -383,18 +685,16 @@ function renderExperimentCharts() {
 function renderE1Chart(details) {
   destroyChart('e1');
   const labels = details.map(d => d.device_label);
-  const gpuFps = details.map(d => pickE1(d, 'gpu'));
-  const cpuFps = details.map(d => pickE1(d, 'cpu'));
   charts.e1 = new Chart(document.getElementById('e1Chart'), {
     type: 'bar',
     data: {
       labels,
       datasets: [
-        { label: 'GPU', data: gpuFps, backgroundColor: '#7ee787' },
-        { label: 'CPU', data: cpuFps, backgroundColor: '#ffb454' },
+        { label: 'GPU', data: details.map(d => pickE1(d, 'gpu')), backgroundColor: '#3fb950' },
+        { label: 'CPU', data: details.map(d => pickE1(d, 'cpu')), backgroundColor: '#d29922' },
       ],
     },
-    options: barOpts('E1 FPS by device'),
+    options: barOpts('E1 — FPS by device (CPU vs GPU)'),
   });
 }
 
@@ -414,15 +714,14 @@ function renderE2Chart(details) {
     return {
       label: d.device_label,
       data: xs.map(x => byBs[x] ?? null),
-      borderColor: colorFor(i),
-      backgroundColor: colorFor(i) + '33',
-      tension: 0.2, spanGaps: true,
+      borderColor: colorFor(i), backgroundColor: colorFor(i) + '33',
+      tension: 0.25, spanGaps: true, borderWidth: 2,
     };
   });
   charts.e2 = new Chart(document.getElementById('e2Chart'), {
     type: 'line',
     data: { labels: xs.map(String), datasets },
-    options: lineOpts('FPS vs batch size'),
+    options: lineOpts('E2 — FPS vs batch size'),
   });
 }
 
@@ -435,35 +734,28 @@ function renderE3Chart(details) {
     return {
       label: d.device_label,
       data: xs.map(x => byN[x] ?? null),
-      borderColor: colorFor(i),
-      backgroundColor: colorFor(i) + '33',
-      tension: 0.2, spanGaps: true,
+      borderColor: colorFor(i), backgroundColor: colorFor(i) + '33',
+      tension: 0.25, spanGaps: true, borderWidth: 2,
     };
   });
   charts.e3 = new Chart(document.getElementById('e3Chart'), {
     type: 'line',
     data: { labels: xs.map(String), datasets },
-    options: lineOpts('FPS vs number of streams (Amdahl scaling)'),
+    options: lineOpts('E3 — FPS vs streams (Amdahl scaling)'),
   });
 }
 
 function renderE5Chart(details) {
   destroyChart('e5');
-  const xs = ['yolov8n.pt', 'yolov8s.pt', 'yolov8m.pt',
-              'yolov8l.pt', 'yolov8x.pt'];
+  const xs = ['yolov8n.pt', 'yolov8s.pt', 'yolov8m.pt', 'yolov8l.pt', 'yolov8x.pt'];
   const datasets = details.map((d, i) => {
     const runs = (((d.experiments || {}).experiments || {}).E5 || {}).runs || [];
     const byM = Object.fromEntries(runs.map(r => [r.model, r.fps]));
-    return {
-      label: d.device_label,
-      data: xs.map(x => byM[x] ?? null),
-      backgroundColor: colorFor(i),
-    };
+    return { label: d.device_label, data: xs.map(x => byM[x] ?? null), backgroundColor: colorFor(i) };
   });
   charts.e5 = new Chart(document.getElementById('e5Chart'), {
-    type: 'bar',
-    data: { labels: xs, datasets },
-    options: barOpts('E5 model-size sweep'),
+    type: 'bar', data: { labels: xs, datasets },
+    options: barOpts('E5 — model-size sweep'),
   });
 }
 
@@ -473,16 +765,11 @@ function renderE6Chart(details) {
   const datasets = details.map((d, i) => {
     const runs = (((d.experiments || {}).experiments || {}).E6 || {}).runs || [];
     const byS = Object.fromEntries(runs.map(r => [r.scenario, r.fps]));
-    return {
-      label: d.device_label,
-      data: xs.map(x => byS[x] ?? null),
-      backgroundColor: colorFor(i),
-    };
+    return { label: d.device_label, data: xs.map(x => byS[x] ?? null), backgroundColor: colorFor(i) };
   });
   charts.e6 = new Chart(document.getElementById('e6Chart'), {
-    type: 'bar',
-    data: { labels: xs, datasets },
-    options: barOpts('E6 inference engine comparison'),
+    type: 'bar', data: { labels: xs, datasets },
+    options: barOpts('E6 — inference engine comparison'),
   });
 }
 
@@ -492,42 +779,17 @@ function renderE7Chart(details) {
   const datasets = details.map((d, i) => {
     const runs = (((d.experiments || {}).experiments || {}).E7 || {}).runs || [];
     const byS = Object.fromEntries(runs.map(r => [r.scenario, r.fps]));
-    return {
-      label: d.device_label,
-      data: xs.map(x => byS[x] ?? null),
-      backgroundColor: colorFor(i),
-    };
+    return { label: d.device_label, data: xs.map(x => byS[x] ?? null), backgroundColor: colorFor(i) };
   });
   charts.e7 = new Chart(document.getElementById('e7Chart'), {
-    type: 'bar',
-    data: { labels: xs, datasets },
-    options: barOpts('E7 GPU preprocessing + CUDA streams'),
+    type: 'bar', data: { labels: xs, datasets },
+    options: barOpts('E7 — GPU preprocessing + CUDA streams'),
   });
 }
 
-function barOpts(title) {
-  return {
-    maintainAspectRatio: false, responsive: true,
-    plugins: {
-      legend: { labels: { color: '#e6e8ef' } },
-      title: { display: !!title, text: title, color: '#8a93a6' },
-    },
-    scales: {
-      x: { ticks: { color: '#8a93a6' }, grid: { color: '#262c3a' } },
-      y: { ticks: { color: '#8a93a6' }, grid: { color: '#262c3a' },
-           beginAtZero: true },
-    },
-  };
-}
-function lineOpts(title) {
-  const o = barOpts(title);
-  o.elements = { point: { radius: 4 } };
-  return o;
-}
-
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
 // Tabs
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('#expTabs button').forEach(btn => {
   btn.onclick = () => {
     const t = btn.dataset.tab;
@@ -538,9 +800,9 @@ document.querySelectorAll('#expTabs button').forEach(btn => {
   };
 });
 
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
 // Utils
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
 function fmt(v, digits) {
   if (v == null || isNaN(v)) return '—';
   return Number(v).toFixed(digits || 2);
@@ -555,9 +817,9 @@ function formatWhen(iso) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
-// --------------------------------------------------------------- //
-// Boot + auto-refresh
-// --------------------------------------------------------------- //
+// ─────────────────────────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────────────────────────
 refresh();
 setInterval(refresh, 30000);
 </script>
