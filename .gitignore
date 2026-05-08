@@ -224,3 +224,10 @@ web/data/
 # Downloaded YOLO model weights (Ultralytics fetches these on demand)
 *.pt
 *.onnx
+
+# JetBrains IDEs (e.g. PyCharm)
+.idea/
+
+# Ignore Pdf
+*.pdf
+*.docx

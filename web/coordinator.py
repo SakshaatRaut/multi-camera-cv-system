@@ -317,6 +317,46 @@ def get_plot(sub_id: str, plot_name: str) -> FileResponse:
     return FileResponse(p, media_type='image/png')
 
 
+@app.patch('/api/submissions/{sub_id}')
+def update_submission(
+    sub_id: str,
+    device_label: str = Form(None),
+    notes: str = Form(None),
+) -> dict[str, Any]:
+    """Update mutable fields on an existing submission.
+
+    Supported fields: device_label, notes. Other fields (hardware,
+    baseline JSON, experiment data) are immutable and require a fresh
+    submission to change.
+    """
+    fields = []
+    values: list[Any] = []
+    if device_label is not None:
+        fields.append('device_label = ?')
+        values.append(device_label)
+    if notes is not None:
+        fields.append('notes = ?')
+        values.append(notes)
+
+    if not fields:
+        raise HTTPException(
+            status_code=400,
+            detail='nothing to update; provide device_label and/or notes',
+        )
+
+    values.append(sub_id)
+    with _conn() as c:
+        cur = c.execute(
+            f'UPDATE submissions SET {", ".join(fields)} WHERE id = ?',
+            values,
+        )
+        c.commit()
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail='submission not found')
+
+    return {'updated': True, 'id': sub_id, 'changed_fields': fields}
+
+
 @app.delete('/api/submissions/{sub_id}')
 def delete_submission(sub_id: str) -> dict[str, Any]:
     with _conn() as c:

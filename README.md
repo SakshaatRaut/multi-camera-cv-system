@@ -1,691 +1,262 @@
 # Multi-Camera GPU-Accelerated Computer Vision System
 
-> Real-time parallel video processing with GPU acceleration, comprehensive performance analysis, and automated experimentation
+Real-time parallel video processing pipeline with object detection, automated benchmarking across seven experiments, and a multi-device leaderboard dashboard for comparing CUDA discrete GPUs against Apple Silicon and other accelerators.
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![CUDA](https://img.shields.io/badge/CUDA-11.8+-green.svg)](https://developer.nvidia.com/cuda-downloads)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## What this project does
 
----
+The pipeline ingests video from multiple cameras simultaneously, runs YOLOv8 object detection on each stream, and reports per-stream and aggregate throughput. Implementation uses Python multiprocessing to dedicate one OS process per camera (avoiding the GIL on capture and decoding) and a shared GPU process for batched inference.
 
-## 🎯 What This Project Does
+The benchmark suite measures seven experiments. The first four are the originally proposed comparisons; the last three were added to broaden the analysis:
 
-This system processes **multiple video streams in parallel** using **GPU-accelerated object detection** while comprehensively profiling performance. It's designed to demonstrate modern computing concepts including:
+| Experiment | What it measures |
+|---|---|
+| **E1** CPU vs GPU | Same workload run on CPU and GPU to isolate the device speedup. |
+| **E2** Batch size sweep | Throughput vs inference batch size (1, 2, 4, 8, 16). |
+| **E3** Multi-stream scaling | Throughput vs camera count (1, 2, 4, 8) with auto-fitted Amdahl's Law analysis. |
+| **E4** Bottleneck identification | Per-stage latency decomposition with p50/p95/p99 percentiles. |
+| **E5** Model-size sweep | YOLOv8 variants (n/s/m/l/x) — accuracy vs throughput Pareto. |
+| **E6** Inference engine comparison | PyTorch FP32, PyTorch FP16, ONNX Runtime side by side. |
+| **E7** GPU preprocessing | CPU preprocessing vs GPU-side resize/normalize, with optional FP16 + CUDA streams. |
 
-- ✅ **Multi-core CPU processing** (Python multiprocessing)
-- ✅ **GPU acceleration** (CUDA + PyTorch)
-- ✅ **Parallel pipelines** (Producer-consumer pattern)
-- ✅ **Performance profiling** (CPU/GPU/RAM monitoring)
-- ✅ **Automated experimentation** (4 core experiments)
-- ✅ **Amdahl's Law analysis** (Theoretical vs empirical)
+A coordinator + agent system collects results from heterogeneous hardware (CUDA, Apple MPS, CPU) into one shared dashboard. See `web/README.md` for the dashboard architecture.
 
-### Live Demo Output
-
-```
-==================================================================
-MULTI-CAMERA COMPUTER VISION SYSTEM
-==================================================================
-Cameras: 4
-Device: CUDA (NVIDIA GeForce RTX 3080)
-Batch Size: 4
-Duration: 60s
-==================================================================
-
-Pipeline: 118.5 FPS overall, Queue: 3
-  Camera 0: 29.6 FPS, 35ms latency, 142 detections
-  Camera 1: 29.7 FPS, 34ms latency, 156 detections
-  Camera 2: 29.5 FPS, 36ms latency, 138 detections
-  Camera 3: 29.7 FPS, 35ms latency, 149 detections
-
-CPU: 45.2% average, RAM: 3.2GB, GPU: 2.1GB
-✓ Results saved to results/
-```
-
----
-
-## 📁 Project Structure
-
-```
-multi_cam_project/
-│
-├── README.md                    ← You are here
-├── requirements.txt             ← Dependencies
-├── main.py                      ← Main entry point
-│
-├── config/
-│   ├── __init__.py
-│   └── config.py                ← System configuration
-│
-├── utils/
-│   ├── __init__.py
-│   └── logger.py                ← Multi-process logging
-│
-├── camera/
-│   ├── __init__.py
-│   └── camera_stream.py         ← Parallel camera capture
-│
-├── detection/
-│   ├── __init__.py
-│   └── detector.py              ← GPU-accelerated YOLO
-│
-├── pipeline/
-│   ├── __init__.py
-│   └── pipeline_manager.py      ← Pipeline orchestration
-│
-├── profiling/
-│   ├── __init__.py
-│   ├── profiler.py              ← Performance monitoring
-│   └── detailed_profiler.py     ← Stage-by-stage timing
-│
-├── visualization/
-│   ├── __init__.py
-│   └── visualizer.py            ← Plot generation
-│
-├── analysis/
-│   ├── __init__.py
-│   └── amdahls_law.py           ← Amdahl's Law analysis
-│
-├── experiments/
-│   ├── __init__.py
-│   └── run_all_experiments.py   ← Automated experiments
-│
-└── results/                     ← Auto-generated outputs
-    ├── system_stats.csv
-    ├── fps_comparison.png
-    ├── cpu_usage.png
-    ├── memory_usage.png
-    ├── gpu_usage.png
-    ├── system_overview.png
-    └── summary_report.txt
-```
-
-**Total**: 13 Python modules + 9 `__init__.py` + 2 docs = **24 files**
-
----
-
-## ⚡ Quick Start (2 Commands)
-
-```bash
-# 1. Install
-pip install -r requirements.txt
-
-# 2. Run 30-second test
-python main.py --webcam --duration 30
-
-# ✓ Check results
-ls results/
-```
-
----
-
-## 🛠️ Complete Installation
+## Quick start
 
 ### Prerequisites
-- Python 3.8+
-- (Optional) NVIDIA GPU with CUDA 11.8+
 
-### Step 1: Create Project Structure
+- Python 3.10+
+- One of: NVIDIA GPU + CUDA 12.1+, Apple Silicon Mac, or any x86-64 CPU
+- Eight `.mp4` video files in `videos/cam1.mp4` … `videos/cam8.mp4` for the canonical benchmark
+
+### Install
+
 ```bash
-# Create main folder
-mkdir multi_cam_project
-cd multi_cam_project
+git clone https://github.com/<your-username>/multi-camera-cv-system.git
+cd multi-camera-cv-system
 
-# Create all subdirectories
-mkdir config utils camera detection pipeline profiling visualization analysis experiments results logs
-```
+python -m venv .venv
+source .venv/bin/activate          # macOS/Linux
+# .venv\Scripts\activate            # Windows
 
-### Step 2: Add All Files
-Copy these 13 Python files to their locations:
-1. `main.py` → root
-2. `config/config.py`
-3. `utils/logger.py`
-4. `camera/camera_stream.py`
-5. `detection/detector.py`
-6. `pipeline/pipeline_manager.py`
-7. `profiling/profiler.py`
-8. `profiling/detailed_profiler.py`
-9. `visualization/visualizer.py`
-10. `analysis/amdahls_law.py`
-11. `experiments/run_all_experiments.py`
-12. `requirements.txt` → root
-13. `README.md` → root (this file)
-
-### Step 3: Create Package Markers
-```bash
-# Create empty __init__.py in each folder
-touch config/__init__.py
-touch utils/__init__.py
-touch camera/__init__.py
-touch detection/__init__.py
-touch pipeline/__init__.py
-touch profiling/__init__.py
-touch visualization/__init__.py
-touch analysis/__init__.py
-touch experiments/__init__.py
-```
-
-### Step 4: Install Dependencies
-```bash
-# Create virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install packages
 pip install -r requirements.txt
-
-# GPU support (optional but recommended)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### Step 5: Verify Installation
-```bash
-# Test imports
-python -c "import cv2, torch, ultralytics, psutil, matplotlib; print('✓ All OK')"
-
-# Check GPU
-python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
-```
-
----
-
-## 🚀 Usage
-
-### Basic Commands
+For best ONNX performance on CUDA boxes, replace the universal `onnxruntime` with the GPU build:
 
 ```bash
-# Webcam test (1 camera, 30 seconds)
-python main.py --webcam --duration 30
-
-# Multiple cameras (4 streams, 60 seconds)
-python main.py --cameras 4 --duration 60
-
-# With video files
-python main.py --video-sources video1.mp4 video2.mp4 video3.mp4
-
-# CPU-only mode
-python main.py --cameras 4 --device cpu --duration 30
-
-# Different batch sizes
-python main.py --cameras 4 --batch-size 8 --duration 30
-
-# Different YOLO models
-python main.py --cameras 4 --model yolov8m.pt --duration 30
-
-# Continuous mode (stop with Ctrl+C)
-python main.py --cameras 4
+pip uninstall -y onnxruntime
+pip install onnxruntime-gpu
 ```
 
-### All Options
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `--cameras` | int | - | Number of camera streams |
-| `--webcam` | flag | - | Use webcam (1 camera) |
-| `--video-sources` | list | - | Video file paths |
-| `--duration` | int | None | Duration in seconds |
-| `--device` | str | cuda | cuda or cpu |
-| `--batch-size` | int | 4 | Inference batch size |
-| `--model` | str | yolov8n.pt | n/s/m/l/x |
+### Smoke test (30 seconds)
 
 ```bash
-# Get help
-python main.py --help
+python main.py --video-sources videos/cam1.mp4 videos/cam2.mp4 \
+               --device auto --duration 30
 ```
 
----
+You should see per-camera FPS lines streaming for 30 seconds, then a summary report. Outputs land in `results/`.
 
-## 🧪 Running Experiments
-
-### The 4 Core Experiments
-
-#### E1: CPU vs GPU Comparison (6 minutes)
-```bash
-# GPU run
-python main.py --cameras 4 --device cuda --duration 30
-mv results/summary_report.txt results/E1_GPU.txt
-
-# CPU run
-python main.py --cameras 4 --device cpu --duration 30
-mv results/summary_report.txt results/E1_CPU.txt
-
-# Compare
-diff results/E1_GPU.txt results/E1_CPU.txt
-```
-
-#### E2: Batch Size Analysis (10 minutes)
-```bash
-# Test batch sizes 1, 2, 4, 8, 16
-for batch in 1 2 4 8 16; do
-    python main.py --cameras 4 --batch-size $batch --duration 20
-    mv results/summary_report.txt results/E2_batch_${batch}.txt
-done
-
-# Compare results
-grep "FPS" results/E2_batch_*.txt
-```
-
-#### E3: Multi-Stream Scaling (12 minutes)
-```bash
-# Test 1, 2, 4, 8 streams
-for streams in 1 2 4 8; do
-    python main.py --cameras $streams --duration 30
-    mv results/summary_report.txt results/E3_${streams}_streams.txt
-done
-
-# Analyze with Amdahl's Law
-python -c "
-from analysis.amdahls_law import AmdahlsLawAnalyzer
-analyzer = AmdahlsLawAnalyzer()
-# Add your measured FPS values here
-analyzer.add_measurement(1, fps=30.0)
-analyzer.add_measurement(2, fps=55.0)
-analyzer.add_measurement(4, fps=95.0)
-analyzer.add_measurement(8, fps=140.0)
-analyzer.generate_report()
-analyzer.plot_speedup_curve()
-"
-```
-
-#### E4: Bottleneck Identification (3 minutes)
-```bash
-# Run with detailed profiling
-python main.py --cameras 4 --duration 30
-
-# Bottleneck analysis is automatic in output
-grep -A 10 "BOTTLENECK" results/summary_report.txt
-```
-
-### Automated Execution (Recommended)
+### Full benchmark (≈30 minutes)
 
 ```bash
-# Run all 4 experiments automatically (20-30 minutes)
-python experiments/run_all_experiments.py --experiment all
-
-# Or run individually
-python experiments/run_all_experiments.py --experiment e1
-python experiments/run_all_experiments.py --experiment e2
-python experiments/run_all_experiments.py --experiment e3
-python experiments/run_all_experiments.py --experiment e4
-
-# Results saved to: experiments/results/
+python main.py --video-sources videos/cam1.mp4 videos/cam2.mp4 videos/cam3.mp4 \
+                               videos/cam4.mp4 videos/cam5.mp4 videos/cam6.mp4 \
+                               videos/cam7.mp4 videos/cam8.mp4 \
+               --device auto --duration 30 --run-experiments all
 ```
 
----
+This runs the baseline plus all seven experiments. Baseline outputs land in `results/baseline/`; experiment outputs in `experiments/results/`.
 
-## 📊 Understanding Results
+## Repository layout
 
-## Experiments and Results Analysis
+```
+multi-camera-cv-system/
+├── main.py                            Entry point. --run-experiments triggers the full suite.
+├── config/
+│   ├── config.py                      Default SYSTEM_CONFIG and COCO class names.
+│   └── __init__.py
+├── camera/
+│   └── camera_stream.py               Per-camera mp.Process producer; shared frame queue.
+├── detection/
+│   ├── detector.py                    PyTorch YOLODetector with FP16 + GPU preprocess + CUDA streams.
+│   └── onnx_detector.py               ONNX Runtime drop-in detector.
+├── pipeline/
+│   └── pipeline_manager.py            Batched producer-consumer pipeline.
+├── profiling/
+│   ├── profiler.py                    System-level CPU/RAM/GPU monitoring.
+│   └── detailed_profiler.py           Per-stage percentile profiler (E4).
+├── analysis/
+│   └── amdahls_law.py                 Parallel-fraction estimator + speedup-curve plot.
+├── experiments/
+│   └── run_all_experiments.py         E1–E7 automation; spawns main.py subprocesses.
+├── visualization/
+│   └── visualizer.py                  Matplotlib reports for the baseline run.
+├── web/
+│   ├── coordinator.py                 FastAPI + SQLite leaderboard server.
+│   ├── agent.py                       Per-device benchmark runner + uploader.
+│   ├── dashboard.html                 Single-page leaderboard UI (Chart.js).
+│   ├── requirements.txt               FastAPI dependencies (separate from main).
+│   └── README.md                      Dashboard architecture and deployment.
+├── videos/                            Input video files (gitignored).
+├── results/                           Per-run scratch outputs (gitignored).
+├── experiments/results/               Full-suite outputs (gitignored).
+├── requirements.txt
+└── README.md                          This file.
+```
 
-The following analysis summarizes the confirmed second experiment run completed on April 13, 2026. In this run, CUDA was available and the automated experiment suite produced reports for the four core experiments using the saved outputs in `experiments/results/`.
+## Command-line reference
 
-### Experimental Setup
+`main.py` accepts the following flags. The benchmark agent (`web/agent.py`) wraps these with sensible defaults — most users do not invoke `main.py` directly.
 
-- Hardware context: NVIDIA GeForce GTX 1650 with CUDA-enabled PyTorch
-- Input videos: `cam1.mp4` to `cam8.mp4`
-- Default multi-camera workload for comparison experiments: 4 video streams
-- Metrics used: total FPS, per-camera FPS, average latency, CPU usage, RAM usage, and GPU memory usage
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--cameras N` | int | — | Use webcam at index 0, replicated N times. |
+| `--video-sources A B C …` | paths | — | Video files to use as camera streams. |
+| `--webcam` | flag | — | Single-camera webcam mode. |
+| `--duration` | int | None | Run length in seconds. None = run until Ctrl+C. |
+| `--device` | choice | `cuda` | `auto` / `cuda` / `mps` / `cpu`. |
+| `--model` | choice | `yolov8n.pt` | `yolov8{n,s,m,l,x}.pt`. |
+| `--batch-size` | int | 4 | Inference batch size. |
+| `--backend` | choice | `pytorch` | `pytorch` or `onnx`. |
+| `--fp16` | flag | off | Enable FP16 mixed precision (CUDA only; no-op on MPS). |
+| `--gpu-preprocess` | flag | off | Run resize/normalize on the GPU (CUDA or MPS). |
+| `--onnx-coreml` | flag | off | Opt into CoreMLExecutionProvider (CPU EP is the default on Mac because CoreML is incompatible with YOLOv8 dynamic-batch graphs). |
+| `--no-detailed-profiling` | flag | off | Disable per-stage profiler. |
+| `--run-experiments` | choice | `none` | After the baseline, also run experiments. Values: `none` / `core` (E1–E4) / `all` (E1–E7) / `e1` … `e7`. |
 
-### E1: CPU vs GPU Comparison
+Exactly one of `--cameras`, `--video-sources`, or `--webcam` must be specified.
 
-Experiment E1 compares the same pipeline under CUDA and CPU execution using the run 2 saved reports:
+## Running the benchmark
 
-| Device | Cameras in Report | Total FPS | Avg Camera FPS | Avg Latency (ms) | CPU Avg | RAM Avg (GB) | GPU Avg (GB) |
-|--------|-------------------|-----------|----------------|------------------|---------|--------------|--------------|
-| CUDA   | 1                 | 18.33     | 18.33          | 360.9            | 32.4%   | 6.09         | 0.05         |
-| CPU    | 4                 | 4.01      | 1.00           | 3024.3           | 51.1%   | 6.28         | 0.00         |
+There are two ways to produce results:
 
-Interpretation:
+### Option A: Local run via `main.py` (single device)
 
-- The CUDA execution is substantially faster than the CPU execution, delivering `18.33 FPS` versus `4.01 FPS`, which is about a `4.57x` improvement in total throughput.
-- Latency also improves sharply with CUDA, dropping from `3024.3 ms` on CPU to `360.9 ms` on CUDA, which is about an `88.1%` reduction.
-- CPU utilization falls from `51.1%` to `32.4%`, showing that GPU acceleration offloads a meaningful part of the detection workload from the processor.
-- RAM usage remains broadly similar across both modes, which suggests that the main benefit of CUDA in this system is improved compute throughput rather than memory savings.
+Useful for development or testing on one machine. Outputs go to local `results/` and `experiments/results/`.
 
-Important note:
+```bash
+# Baseline only (≈30 s)
+python main.py --video-sources videos/cam1.mp4 videos/cam2.mp4 ... videos/cam8.mp4 \
+               --device auto --duration 30
 
-- The saved E1 reports are not perfectly matched in camera count because the CUDA report contains one active camera while the CPU report contains four. This means E1 should be described as strong evidence that CUDA materially improves performance, but not as a perfectly controlled apples-to-apples benchmark.
+# Baseline + a single experiment
+python main.py --video-sources videos/cam{1..8}.mp4 \
+               --device auto --duration 30 --run-experiments e3
 
-### E2: Batch Size Analysis
+# Baseline + all seven experiments
+python main.py --video-sources videos/cam{1..8}.mp4 \
+               --device auto --duration 30 --run-experiments all
+```
 
-Experiment E2 evaluates how inference batch size affects throughput and latency on the GPU-enabled run:
+### Option B: Submission via the agent (multi-device)
 
-| Batch Size | Total FPS | Avg Camera FPS | Avg Latency (ms) |
-|------------|-----------|----------------|------------------|
-| 1          | 25.36     | 6.34           | 665.4            |
-| 2          | 24.87     | 6.22           | 694.0            |
-| 4          | 30.75     | 7.69           | 640.6            |
-| 8          | 29.52     | 7.38           | 713.3            |
-| 16         | 23.59     | 5.90           | 784.9            |
+Recommended for the actual benchmark. The agent runs `main.py --run-experiments all` with auto-detected hardware settings, then uploads the bundle to a coordinator running on one of the team's machines. Results from every participant accumulate on a shared dashboard.
 
-Interpretation:
+```bash
+# Start the coordinator (do this once on one machine)
+uvicorn web.coordinator:app --host 0.0.0.0 --port 8000
 
-- `batch_size=4` delivers the best overall performance, producing the highest throughput and the lowest latency among the tested batch sizes.
-- `batch_size=8` remains competitive in throughput, but its higher latency makes it less attractive for a real-time pipeline.
-- Very large batches, especially `16`, reduce performance on this hardware, indicating that batching overhead and queue delay start to outweigh inference gains.
-- For the current system and GPU, `batch_size=4` is the best default configuration.
+# On every participating laptop:
+python web/agent.py --server http://<coordinator-host>:8000 \
+                    --device-label "My Laptop" --mode full
+```
 
-### E3: Multi-Stream Scaling
+The agent auto-enables FP16 + GPU preprocessing on CUDA hardware to surface realistic optimized performance on the headline chart. On Apple Silicon those flags are no-ops in the current detector code (FP16 is CUDA-only), so the headline reflects honest MPS-vanilla performance.
 
-Experiment E3 measures how the system scales as the number of parallel streams increases:
+See [`web/README.md`](web/README.md) for full coordinator deployment instructions, networking options (LAN, Tailscale, ngrok), and submission workflow.
 
-| Streams | Total FPS | Speedup vs 1 Stream | Avg Latency (ms) | Status |
-|---------|-----------|---------------------|------------------|--------|
-| 1       | 19.06     | 1.00x               | 55.3             | Valid  |
-| 2       | 27.56     | 1.45x               | 97.9             | Valid  |
-| 4       | 35.49     | 1.86x               | 651.1            | Valid  |
-| 8       | 0.00      | Invalid             | -                | Excluded |
+## Output files
 
-Interpretation:
-
-- The system scales positively from `1` to `4` streams, confirming that the multiprocessing and batched GPU pipeline does exploit parallelism.
-- The speedup is sublinear: moving from `1` to `4` streams gives `1.86x` speedup rather than the ideal `4x`.
-- Latency rises sharply at `4` streams, showing that higher throughput is being achieved with a tradeoff in responsiveness.
-- The `8`-stream point should be excluded from quantitative claims because the saved report contains no usable per-camera measurements.
-
-### Amdahl's Law Interpretation
-
-The scaling data was fitted using Amdahl's Law on the valid `1`, `2`, and `4` stream measurements:
-
-- Estimated parallel fraction `P = 0.617`
-- Estimated serial fraction `1 - P = 0.383`
-- Maximum theoretical speedup `= 2.61x`
-
-Interpretation:
-
-- The pipeline has a meaningful parallel component, but a substantial serial portion still limits scaling.
-- The measured `1.86x` speedup at `4` streams is consistent with this model, so the observed behavior is not anomalous.
-- This suggests that future gains will depend not only on faster inference, but also on reducing serial overhead in frame ingestion, batching, synchronization, and post-processing.
-
-### E4: Bottleneck Analysis
-
-Experiment E4 provides a final workload-level snapshot for four streams:
-
-- Total FPS: `34.84`
-- Average per-camera FPS: `8.71`
-- Average latency: `683.0 ms`
-- Maximum reported latency: `1663.3 ms`
-- CPU average: `33.6%`
-
-Interpretation:
-
-- The system achieves solid four-stream throughput on the available GPU-assisted setup.
-- However, latency is uneven across cameras, with one stream showing much higher delay than the others.
-- This imbalance suggests that the main bottlenecks are now related to queueing, batching delay, synchronization, or uneven scheduling across streams rather than raw inference alone.
-
-### Overall Discussion
-
-The second run confirms that GPU acceleration materially improves the system's performance. CUDA execution provides much higher throughput, much lower latency, and lower CPU utilization than CPU execution in the saved E1 comparison. Beyond raw device choice, the most useful tuning result is that `batch_size=4` gives the best balance of throughput and latency on this hardware. The scaling results further show that the architecture benefits from parallelism, but not linearly, because a significant serial component remains in the pipeline. Overall, the system is no longer limited only by detector speed; its next optimization opportunities lie in improving pipeline balance, reducing synchronization overhead, and stabilizing latency across streams.
-
-### Generated Files
-
-After running, check `results/`:
+A single run of `main.py` produces (under `results/`):
 
 ```
 results/
-├── system_stats.csv          # Timestamped performance data
-├── fps_comparison.png        # FPS per camera over time
-├── cpu_usage.png             # CPU utilization
-├── memory_usage.png          # RAM usage
-├── gpu_usage.png             # GPU memory (if available)
-├── system_overview.png       # Complete dashboard
-├── summary_report.txt        # Text summary
-└── amdahls_law_plot.png     # Speedup curve (after E3)
+├── run_summary.json              Machine-readable headline numbers + config.
+├── summary_report.txt            Human-readable performance summary.
+├── bottleneck_analysis.json      Per-stage E4 data (machine-readable).
+├── bottleneck_analysis.txt       Per-stage E4 data (human-readable).
+├── stage_latency_histograms.png  Per-stage latency distributions (E4 visual).
+├── fps_comparison.png            Throughput-over-time plot.
+├── cpu_usage.png
+├── memory_usage.png
+├── system_overview.png
+└── system_stats.csv              Raw psutil samples.
 ```
 
-### Reading the Summary
-
-```bash
-cat results/summary_report.txt
-```
-
-Example output:
-```
-==============================================================
-PERFORMANCE REPORT
-==============================================================
-Duration: 60.00s
-
-CPU:
-  Average: 45.2%
-  Peak: 68.1%
-
-RAM:
-  Average: 3.21GB
-  Peak: 3.45GB
-
-GPU:
-  Average Memory: 2.15GB
-  Peak Memory: 2.38GB
-
-PER-CAMERA:
-  Camera 0: 29.6 FPS, 35.2ms
-  Camera 1: 29.7 FPS, 34.8ms
-  Camera 2: 29.5 FPS, 36.1ms
-  Camera 3: 29.7 FPS, 35.4ms
-==============================================================
-```
-
-### Expected Performance
-
-**GPU (NVIDIA RTX 3080, 4 cameras):**
-- Total: 100-120 FPS
-- Per camera: 25-30 FPS
-- Latency: 30-50ms
-- CPU: 40-60%
-- GPU memory: 2-3GB
-
-**CPU (8-core Intel, 4 cameras):**
-- Total: 15-25 FPS
-- Per camera: 4-6 FPS
-- Latency: 200-300ms
-- CPU: 90-100%
-
----
-
-## 🔧 Technical Details
-
-### Architecture
+When `--run-experiments` is set, these files are first preserved into `results/baseline/` before the experiment subprocesses overwrite `results/` with their per-experiment outputs. Experiment outputs land in `experiments/results/` with the layout:
 
 ```
-┌────────────────────────────────────────────┐
-│         Multi-Camera System                │
-├────────────────────────────────────────────┤
-│                                            │
-│  Camera 0 (Process) ──┐                    │
-│  Camera 1 (Process) ──┼─→ Queue            │
-│  Camera 2 (Process) ──┤    ↓               │
-│  Camera 3 (Process) ──┘  Pipeline          │
-│                            ↓               │
-│  (Multiprocessing)     Batch Formation     │
-│                            ↓               │
-│                        GPU Detector        │
-│                            ↓               │
-│                        Profiler            │
-│                            ↓               │
-│                       Visualizations       │
-└────────────────────────────────────────────┘
+experiments/results/
+├── experiment_metadata.json     Aggregate of all completed experiments.
+├── e1_gpu_summary.json          E1 GPU run.
+├── e1_cpu_summary.json
+├── e2_batch_{1,2,4,8,16}_summary.json
+├── e2_batch_size_curve.png
+├── e3_streams_{1,2,4,8}_summary.json
+├── e3_amdahls_law_report.txt    Auto-fitted P-fraction analysis.
+├── e3_amdahls_law_plot.png
+├── e4_summary.json
+├── e5_yolov8{n,s,m,l,x}_summary.json
+├── e5_model_sweep.png
+├── e6_pytorch_{fp32,fp16}_summary.json
+├── e6_onnxruntime_summary.json
+├── e6_engines.png
+├── e7_{cpu,gpu,gpu_fp16}_preproc_summary.json
+└── e7_gpu_preproc.png
 ```
 
-### Technologies
+## Architecture
 
-- **Video**: OpenCV
-- **Detection**: YOLOv8 (Ultralytics)
-- **GPU**: PyTorch + CUDA
-- **Parallelism**: Python multiprocessing
-- **Profiling**: psutil, torch.cuda
-- **Visualization**: Matplotlib, Seaborn
-- **Analysis**: Pandas, NumPy
+```
+                       Each camera process reads
+                       its video at native FPS;
+                       puts frames into shared queue
+                       ──────────────────────────────
 
-### Performance Features
+  Camera 0 (mp.Process) ─┐
+  Camera 1 (mp.Process) ─┤
+  Camera 2 (mp.Process) ─┼──▶ mp.Queue ──▶ Pipeline manager (main process)
+  Camera 3 (mp.Process) ─┤                       │
+   …                     │                       ▼
+  Camera 7 (mp.Process) ─┘                Batch formation
+                                                 │
+                                                 ▼
+                                          GPU detector (CUDA / MPS / CPU)
+                                                 │
+                                                 ▼
+                                       Per-stage profiler:
+                                       frame_loading,
+                                       preprocessing,
+                                       inference,
+                                       postprocessing,
+                                       output
 
-- ✅ One process per camera (true parallelism)
-- ✅ GPU batch processing (4-16 frames)
-- ✅ Queue buffering (prevents stalls)
-- ✅ Frame dropping (prevents overflow)
-- ✅ Real-time profiling (CPU/GPU/RAM)
-
----
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-**"CUDA out of memory"**
-```bash
-# Reduce batch size
-python main.py --cameras 2 --batch-size 2
-
-# Use smaller model
-python main.py --model yolov8n.pt
-
-# Use CPU
-python main.py --device cpu
+  Background:  system profiler (psutil) samples CPU/RAM at 1 Hz.
 ```
 
-**"Cannot open camera"**
-```bash
-# Test camera
-python -c "import cv2; print(cv2.VideoCapture(0).isOpened())"
+Five stages are instrumented per frame; the DetailedProfiler reports their p50/p95/p99 latencies and a percentage breakdown of where total pipeline time is spent.
 
-# Try different index
-python main.py --video-sources 1
-```
+## Hardware notes
 
-**"ModuleNotFoundError"**
-```bash
-# Reinstall
-pip install -r requirements.txt
+**CUDA discrete GPUs** — The agent auto-enables `--fp16` and `--gpu-preprocess`. ONNX Runtime uses `CUDAExecutionProvider`. Best performance on this stack.
 
-# Check location
-pwd  # Should be in multi_cam_project/
-```
+**Apple Silicon (MPS)** — The detector uses Metal Performance Shaders for inference. FP16 autocast is intentionally disabled on MPS in the detector code because PyTorch's MPS backend has incomplete FP16 op coverage and silently falls back to FP32 for many ops; forcing it on would mislabel FP32 numbers as FP16. ONNX Runtime uses `CPUExecutionProvider` because `CoreMLExecutionProvider` has a known incompatibility with YOLOv8 dynamic-batch graphs.
 
-**Low FPS**
-```bash
-# Check GPU
-nvidia-smi
+**CPU-only** — All paths fall back gracefully. The pipeline still works but throughput drops by 5–10× depending on the CPU.
 
-# Reduce load
-python main.py --cameras 2 --batch-size 4
-```
+## Troubleshooting
 
----
+**`CUDA out of memory`** — Reduce `--batch-size` or use a smaller model variant (`--model yolov8n.pt`). On 4 GB GPUs the eight-camera default may exceed VRAM at batch sizes above 4.
 
-## 📚 Project Documentation
+**Pipeline shows 0 frames processed** — Either no `videos/cam*.mp4` files are present, or the configured device couldn't open them. Check that exactly eight valid `.mp4` files exist in `videos/`.
 
-- All functions have detailed docstrings
-- See code comments for implementation details
-- Check `results/summary_report.txt` for performance data
+**`Field power.draw is not supported` from `nvidia-smi`** — Some older laptop GPUs disable power telemetry in vBIOS; the FPS-per-watt experiment isn't possible on those cards.
 
----
+**ONNX scenario silently skipped in E6** — Usually means `onnxruntime` isn't installed. `pip install onnxruntime` (or `onnxruntime-gpu` on CUDA hosts) and rerun.
 
-## 🎓 Educational Value
+**Subprocess hangs at shutdown** — Has been observed when forced child termination corrupts the multiprocessing queue's pipe state on macOS. The pipeline manager mitigates this with a daemon-thread drain and bounded queue close. If you still see it, please open an issue.
 
-Perfect for learning:
-- Parallel computing
-- GPU programming
-- Computer vision
-- Performance optimization
-- Systems design
-- Python multiprocessing
+## License
 
-Suitable for courses in:
-- Computer Vision
-- Parallel Computing
-- GPU Programming
-- Systems Programming
-
----
-
-## 📈 Benchmarking
-
-### Quick Benchmark
-
-```bash
-# GPU
-python main.py --cameras 4 --device cuda --duration 30
-mv results/summary_report.txt gpu_bench.txt
-
-# CPU
-python main.py --cameras 4 --device cpu --duration 30
-mv results/summary_report.txt cpu_bench.txt
-
-# Compare
-diff gpu_bench.txt cpu_bench.txt
-```
-
-### Scaling Test
-
-```bash
-for n in 1 2 4 8; do
-    python main.py --cameras $n --duration 20
-    mv results/summary_report.txt scaling_${n}.txt
-done
-```
-
----
-
-## ✅ Verification Checklist
-
-After installation:
-- [ ] All 24 files present
-- [ ] Dependencies installed
-- [ ] Quick test runs successfully
-- [ ] Results directory created
-- [ ] Plots generated
-
-After experiments:
-- [ ] E1 completed (CPU vs GPU)
-- [ ] E2 completed (Batch sizes)
-- [ ] E3 completed (Scaling)
-- [ ] E4 completed (Bottleneck)
-- [ ] Visualizations generated
-- [ ] Summary reports saved
-
----
-
-## 📄 License
-
-MIT License - Free for educational and commercial use
-
----
-
-## 🙏 Acknowledgments
-
-- Ultralytics for YOLOv8
-- PyTorch team for GPU framework
-- OpenCV for video processing
-
----
-
-## 📧 Support
-
-For issues:
-1. Check error logs in `logs/`
-2. Review troubleshooting section
-3. Verify all files are present
-4. Check dependency versions
-
----
-
-## 🎯 Quick Reference
-
-**Installation**: `pip install -r requirements.txt`  
-**Quick Test**: `python main.py --webcam --duration 30`  
-**All Experiments**: `python experiments/run_all_experiments.py --experiment all`  
-**Results**: `ls results/`  
-**Help**: `python main.py --help`
-
----
-
-**Status**: ✅ Production Ready  
-**Coverage**: ✅ 100% of Proposal Requirements  
-**Code Quality**: ✅ Professional Grade  
-**Documentation**: ✅ Complete  
-
-**Ready to run!** 🚀
-
----
-
-*Last Updated: March 2026*
-*Version: 1.0.0*
+MIT. See LICENSE.
